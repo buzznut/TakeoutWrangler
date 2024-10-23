@@ -91,14 +91,14 @@ public class Configs
             try
             {
                 string fileName = Path.GetFileName(settingsFile);
-                string templateSettings = Path.Combine(appPath, $"template.{fileName}");
-                if (!File.Exists(templateSettings))
+                string defaultSettings = Path.Combine(appPath, $"default.{fileName}");
+                if (!File.Exists(defaultSettings))
                 {
-                    // app settings file does not exist and neither does the template file
-                    throw new ApplicationException("Could not find template.appsettings.json file");
+                    // app settings file does not exist and neither does the default file
+                    throw new ApplicationException($"Could not find {defaultSettings} file");
                 }
 
-                File.Copy(templateSettings, fileName);
+                File.Copy(defaultSettings, fileName);
             }
             catch
             {
