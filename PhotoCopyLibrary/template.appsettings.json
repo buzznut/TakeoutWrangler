@@ -1,0 +1,12 @@
+{
+  "Data": {
+    "Settings": {
+      "source":  null,
+      "destination": null,
+      "action": "list",
+      "quiet":  false,
+      "pattern": "$y_$m",
+      "filter": "takeout-*.zip"
+    }
+  }
+}

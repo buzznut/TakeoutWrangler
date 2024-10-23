@@ -1,0 +1,84 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.1.32328.378
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TOWranglerCmdline", "PhotoCopy\TOWranglerCmdline.csproj", "{64F69761-246C-4605-B85F-5F8B8050DBE6}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{403BF1C6-0D7E-40D8-A029-2FBDF12B1A4B}"
+	ProjectSection(SolutionItems) = preProject
+		.editorconfig = .editorconfig
+		GlobalAssemblyInfo.tt = GlobalAssemblyInfo.tt
+	EndProjectSection
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PhotoCopyLibrary", "PhotoCopyLibrary\PhotoCopyLibrary.csproj", "{BCD20D41-9F27-49B5-A933-41D1F76857C4}"
+	ProjectSection(ProjectDependencies) = postProject
+		{C4CA04E2-F5FC-4EB7-811D-A3D7C9599424} = {C4CA04E2-F5FC-4EB7-811D-A3D7C9599424}
+	EndProjectSection
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TOWranglerUI", "PhotoExtract\TOWranglerUI.csproj", "{E8DFA628-0FE5-481C-93D2-649CDCC8F76D}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{15597BF9-FB7A-4ED7-A767-B442BFDD4B07}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TestLibrary", "TestLibrary\TestLibrary.csproj", "{95579CBD-B6C4-4149-86FC-1310E5992385}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Installers", "Installers", "{ECB156EB-21C1-478B-9419-4F3EB046809E}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Documentation", "Documentation", "{5D517154-695F-448D-ACD6-1ED3CF836DD8}"
+	ProjectSection(SolutionItems) = preProject
+		Documentation\Copyright.txt = Documentation\Copyright.txt
+		Documentation\photos.ico = Documentation\photos.ico
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "TakeoutWrangler", "TakeoutWrangler", "{20CC6639-1C21-44BF-9381-8FAA4087053C}"
+	ProjectSection(SolutionItems) = preProject
+		Installers\TakeoutWrangler\TakeoutWrangler.iss = Installers\TakeoutWrangler\TakeoutWrangler.iss
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tools", "Tools", "{9F60F645-B6D1-437B-9A4A-B03871E672B1}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AddCopyright", "Tools\AddCopyright\AddCopyright.csproj", "{B15FE8EB-2792-4A17-9EE9-5A5715E1B31B}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BumpVersion", "Tools\BumpVersion\BumpVersion.csproj", "{C4CA04E2-F5FC-4EB7-811D-A3D7C9599424}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{64F69761-246C-4605-B85F-5F8B8050DBE6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{64F69761-246C-4605-B85F-5F8B8050DBE6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{64F69761-246C-4605-B85F-5F8B8050DBE6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{64F69761-246C-4605-B85F-5F8B8050DBE6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BCD20D41-9F27-49B5-A933-41D1F76857C4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BCD20D41-9F27-49B5-A933-41D1F76857C4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BCD20D41-9F27-49B5-A933-41D1F76857C4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BCD20D41-9F27-49B5-A933-41D1F76857C4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E8DFA628-0FE5-481C-93D2-649CDCC8F76D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E8DFA628-0FE5-481C-93D2-649CDCC8F76D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E8DFA628-0FE5-481C-93D2-649CDCC8F76D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E8DFA628-0FE5-481C-93D2-649CDCC8F76D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{95579CBD-B6C4-4149-86FC-1310E5992385}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{95579CBD-B6C4-4149-86FC-1310E5992385}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{95579CBD-B6C4-4149-86FC-1310E5992385}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{95579CBD-B6C4-4149-86FC-1310E5992385}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B15FE8EB-2792-4A17-9EE9-5A5715E1B31B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B15FE8EB-2792-4A17-9EE9-5A5715E1B31B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C4CA04E2-F5FC-4EB7-811D-A3D7C9599424}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C4CA04E2-F5FC-4EB7-811D-A3D7C9599424}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C4CA04E2-F5FC-4EB7-811D-A3D7C9599424}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{95579CBD-B6C4-4149-86FC-1310E5992385} = {15597BF9-FB7A-4ED7-A767-B442BFDD4B07}
+		{20CC6639-1C21-44BF-9381-8FAA4087053C} = {ECB156EB-21C1-478B-9419-4F3EB046809E}
+		{B15FE8EB-2792-4A17-9EE9-5A5715E1B31B} = {9F60F645-B6D1-437B-9A4A-B03871E672B1}
+		{C4CA04E2-F5FC-4EB7-811D-A3D7C9599424} = {9F60F645-B6D1-437B-9A4A-B03871E672B1}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {A14EDD0F-A169-47D5-9232-4646899FFB2D}
+	EndGlobalSection
+EndGlobal

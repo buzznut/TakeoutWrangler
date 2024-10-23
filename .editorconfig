@@ -1,0 +1,31 @@
+﻿[*.cs]
+
+# RCS1031: Remove unnecessary braces in switch section.
+dotnet_diagnostic.RCS1031.severity = none
+
+# IDE0305: Simplify collection initialization
+dotnet_style_prefer_collection_expression = never
+
+# IDE0090: Use 'new(...)'
+csharp_style_implicit_object_creation_when_type_is_apparent = false
+
+# IDE0063: Use simple 'using' statement
+csharp_prefer_simple_using_statement = false
+
+# IDE0008: Use explicit type
+dotnet_diagnostic.IDE0008.severity = suggestion
+
+# IDE0019: Use pattern matching
+csharp_style_pattern_matching_over_as_with_null_check = false
+
+# IDE0057: Use range operator
+csharp_style_prefer_range_operator = false
+
+# IDE0290: Use primary constructor
+csharp_style_prefer_primary_constructors = false
+
+# RCS1214: Unnecessary interpolated string
+dotnet_diagnostic.RCS1214.severity = silent
+
+# CA1416: Validate platform compatibility
+dotnet_diagnostic.CA1416.severity = suggestion
