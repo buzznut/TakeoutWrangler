@@ -50,12 +50,11 @@ namespace TakeoutWrangler
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(MainForm));
             menuStripMainMenu = new MenuStrip();
             fileToolStripMenuItem = new ToolStripMenuItem();
+            clearToolStripMenuItem = new ToolStripMenuItem();
             toolStripMenuItemPrint = new ToolStripMenuItem();
             toolStripSeparator1 = new ToolStripSeparator();
             exitToolStripMenuItem = new ToolStripMenuItem();
             viewToolStripMenuItem = new ToolStripMenuItem();
-            clearToolStripMenuItem = new ToolStripMenuItem();
-            toolStripSeparator2 = new ToolStripSeparator();
             settingsToolStripMenuItem = new ToolStripMenuItem();
             listBoxView = new ListBox();
             timerView = new System.Windows.Forms.Timer(components);
@@ -76,53 +75,48 @@ namespace TakeoutWrangler
             // 
             // fileToolStripMenuItem
             // 
-            fileToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { toolStripMenuItemPrint, toolStripSeparator1, exitToolStripMenuItem });
+            fileToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { clearToolStripMenuItem, toolStripMenuItemPrint, toolStripSeparator1, exitToolStripMenuItem });
             fileToolStripMenuItem.Name = "fileToolStripMenuItem";
             fileToolStripMenuItem.Size = new Size(37, 20);
             fileToolStripMenuItem.Text = "File";
             // 
+            // clearToolStripMenuItem
+            // 
+            clearToolStripMenuItem.Name = "clearToolStripMenuItem";
+            clearToolStripMenuItem.Size = new Size(180, 22);
+            clearToolStripMenuItem.Text = "Clear console";
+            clearToolStripMenuItem.Click += clearToolStripMenuItem_Click;
+            // 
             // toolStripMenuItemPrint
             // 
             toolStripMenuItemPrint.Name = "toolStripMenuItemPrint";
-            toolStripMenuItemPrint.Size = new Size(108, 22);
-            toolStripMenuItemPrint.Text = "Print...";
+            toolStripMenuItemPrint.Size = new Size(180, 22);
+            toolStripMenuItemPrint.Text = "Print console...";
             toolStripMenuItemPrint.Click += toolStripMenuItemPrint_Click;
             // 
             // toolStripSeparator1
             // 
             toolStripSeparator1.Name = "toolStripSeparator1";
-            toolStripSeparator1.Size = new Size(105, 6);
+            toolStripSeparator1.Size = new Size(177, 6);
             // 
             // exitToolStripMenuItem
             // 
             exitToolStripMenuItem.Name = "exitToolStripMenuItem";
-            exitToolStripMenuItem.Size = new Size(108, 22);
+            exitToolStripMenuItem.Size = new Size(180, 22);
             exitToolStripMenuItem.Text = "Exit";
             exitToolStripMenuItem.Click += exitToolStripMenuItem_Click;
             // 
             // viewToolStripMenuItem
             // 
-            viewToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { clearToolStripMenuItem, toolStripSeparator2, settingsToolStripMenuItem });
+            viewToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { settingsToolStripMenuItem });
             viewToolStripMenuItem.Name = "viewToolStripMenuItem";
-            viewToolStripMenuItem.Size = new Size(44, 20);
-            viewToolStripMenuItem.Text = "View";
-            // 
-            // clearToolStripMenuItem
-            // 
-            clearToolStripMenuItem.Name = "clearToolStripMenuItem";
-            clearToolStripMenuItem.Size = new Size(125, 22);
-            clearToolStripMenuItem.Text = "Clear";
-            clearToolStripMenuItem.Click += clearToolStripMenuItem_Click;
-            // 
-            // toolStripSeparator2
-            // 
-            toolStripSeparator2.Name = "toolStripSeparator2";
-            toolStripSeparator2.Size = new Size(122, 6);
+            viewToolStripMenuItem.Size = new Size(93, 20);
+            viewToolStripMenuItem.Text = "Configuration";
             // 
             // settingsToolStripMenuItem
             // 
             settingsToolStripMenuItem.Name = "settingsToolStripMenuItem";
-            settingsToolStripMenuItem.Size = new Size(125, 22);
+            settingsToolStripMenuItem.Size = new Size(180, 22);
             settingsToolStripMenuItem.Text = "Settings...";
             settingsToolStripMenuItem.Click += settingsToolStripMenuItem_Click;
             // 
@@ -153,14 +147,17 @@ namespace TakeoutWrangler
             buttonRun.Name = "buttonRun";
             buttonRun.Size = new Size(112, 23);
             buttonRun.TabIndex = 2;
-            buttonRun.Text = "Extract";
+            buttonRun.Text = "Execute";
             buttonRun.UseVisualStyleBackColor = true;
             buttonRun.Click += buttonRun_Click;
             // 
             // printDialog
             // 
             printDialog.Document = printDocument;
-            printDialog.UseEXDialog = true;
+            printDialog.UseEXDialog = false;
+            printDialog.AllowSelection = false;
+            printDialog.AllowSomePages = false;
+            printDialog.AllowCurrentPage = false;
             // 
             // printDocument
             // 
@@ -193,7 +190,6 @@ namespace TakeoutWrangler
         private ToolStripMenuItem fileToolStripMenuItem;
         private ToolStripMenuItem exitToolStripMenuItem;
         private ToolStripMenuItem viewToolStripMenuItem;
-        private ToolStripMenuItem clearToolStripMenuItem;
         private ListBox listBoxView;
         private System.Windows.Forms.Timer timerView;
         private Button buttonRun;
@@ -201,7 +197,7 @@ namespace TakeoutWrangler
         private System.Drawing.Printing.PrintDocument printDocument;
         private ToolStripMenuItem toolStripMenuItemPrint;
         private ToolStripSeparator toolStripSeparator1;
-        private ToolStripSeparator toolStripSeparator2;
         private ToolStripMenuItem settingsToolStripMenuItem;
+        private ToolStripMenuItem clearToolStripMenuItem;
     }
 }

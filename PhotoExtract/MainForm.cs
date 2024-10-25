@@ -17,13 +17,9 @@
 // <@$&< copyright end >&$@>
 
 using PhotoCopyLibrary;
-using System.Collections.Concurrent;
-using System.ComponentModel;
-using System.Diagnostics;
 using System.Drawing.Printing;
 using System.Runtime.InteropServices;
 using System.Text;
-using static System.Net.Mime.MediaTypeNames;
 
 namespace TakeoutWrangler;
 
@@ -34,13 +30,6 @@ public partial class MainForm : Form
 
     [DllImport("user32.dll", CharSet = CharSet.Auto)]
     public static extern uint RegisterWindowMessage(string lpString);
-
-    //public string SourceDir { get; set; }
-    //public string DestinationDir { get; set; }
-    //public PhotoCopierActions Action { get; set; }
-    //public string Pattern { get; set; }
-    //public string FileFilter { get; set; }
-    //public bool Quiet { get; set; }
 
     private int visibleItems;
     private PhotoCopier copier;
@@ -195,7 +184,7 @@ public partial class MainForm : Form
             configs.SetString("pattern", pattern);
             configs.SetBool("quiet", quiet);
             configs.SetString("filter", fileFilter);
-            
+
             if (result == DialogResult.Yes)
             {
                 configs.SaveSettings(settings);
@@ -213,11 +202,6 @@ public partial class MainForm : Form
                 buttonRun.Enabled = false;
             }
         }
-    }
-
-    private void clearToolStripMenuItem_Click(object sender, EventArgs e)
-    {
-        listBoxView.Items.Clear();
     }
 
     private void listBoxView_SizeChanged(object sender, EventArgs e)
@@ -280,9 +264,9 @@ public partial class MainForm : Form
         if (DialogResult.OK == printDialog.ShowDialog())
         {
             StringBuilder sb = new StringBuilder();
-            foreach (object foo in listBoxView.Items)
+            foreach (object line in listBoxView.Items)
             {
-                string text = foo as string;
+                string text = line as string;
                 sb.AppendLine(text);
             }
 
@@ -293,5 +277,10 @@ public partial class MainForm : Form
     private void settingsToolStripMenuItem_Click(object sender, EventArgs e)
     {
         ShowSettings();
+    }
+
+    private void clearToolStripMenuItem_Click(object sender, EventArgs e)
+    {
+        listBoxView.Items.Clear();
     }
 }

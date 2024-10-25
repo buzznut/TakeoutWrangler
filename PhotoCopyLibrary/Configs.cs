@@ -51,7 +51,7 @@ public class Configs
 
         if (pHelp == null)
         {
-            pTypes["help"] = new ConfigParam { Name = "help", Synonyms = ["?"], Default = "false", PType = ParamType.Bool };
+            pTypes["help"] = new ConfigParam { Name = "help", Synonyms = ["?"], Default = false, PType = ParamType.Bool };
             pHelp = pTypes["help"];
         }
     }
@@ -123,7 +123,29 @@ public class Configs
             string value = settings.GetSetting(pType.Name, notFoundText);
             if (value != notFoundText)
             {
-                values[pType.Name] = value;
+                switch (pType.PType)
+                {
+                    case ParamType.String:
+                    {
+                        values[pType.Name] = value;
+                        break;
+                    }
+
+                    case ParamType.Bool:
+                    {
+                        ParseBoolObject(value, out bool v);
+                        values[pType.Name] = v;
+                        break;
+                    }
+
+                    case ParamType.Int:
+                    {
+                        ParseIntObject(value, out int v);
+                        values[pType.Name] = v;
+                        break;
+                    }
+                }
+
                 continue;
             }
             if (!values.ContainsKey(pType.Name)) values[pType.Name] = pType.Default;
@@ -142,14 +164,24 @@ public class Configs
                 switch (pType.PType)
                 {
                     case ParamType.String:
-                        settings.AddOrUpdateSetting<string>(key, (string)values[key]);
+                    {
+                        settings.AddOrUpdateSetting(key, values[key] as string);
                         break;
+                    }
+
                     case ParamType.Bool:
-                        settings.AddOrUpdateSetting<bool>(key, (bool)values[key]);
+                    {
+                        ParseBoolObject(values[key], out bool v);
+                        settings.AddOrUpdateSetting(key, v);
                         break;
+                    }
+
                     case ParamType.Int:
-                        settings.AddOrUpdateSetting<int>(key, (int)values[key]);
+                    {
+                        ParseIntObject(values[key], out int v);
+                        settings.AddOrUpdateSetting(key, v);
                         break;
+                    }
                 }
             }
         }

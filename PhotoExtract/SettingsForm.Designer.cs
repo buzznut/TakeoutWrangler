@@ -125,7 +125,7 @@ namespace TakeoutWrangler
             groupBoxSource.Size = new Size(680, 116);
             groupBoxSource.TabIndex = 5;
             groupBoxSource.TabStop = false;
-            groupBoxSource.Text = "Archive";
+            groupBoxSource.Text = "Takeout files";
             // 
             // labelArchiveFilter
             // 
@@ -141,7 +141,7 @@ namespace TakeoutWrangler
             // buttonSourceDialog
             // 
             buttonSourceDialog.Anchor = AnchorStyles.Top | AnchorStyles.Right;
-            buttonSourceDialog.Location = new Point(589, 41);
+            buttonSourceDialog.Location = new Point(589, 38);
             buttonSourceDialog.Name = "buttonSourceDialog";
             buttonSourceDialog.Size = new Size(27, 23);
             buttonSourceDialog.TabIndex = 8;
@@ -162,7 +162,6 @@ namespace TakeoutWrangler
             // textBoxFileFilter
             // 
             textBoxFileFilter.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
-            textBoxFileFilter.BorderStyle = BorderStyle.FixedSingle;
             textBoxFileFilter.Location = new Point(78, 69);
             textBoxFileFilter.Name = "textBoxFileFilter";
             textBoxFileFilter.Size = new Size(150, 23);
@@ -171,7 +170,6 @@ namespace TakeoutWrangler
             // textBoxSource
             // 
             textBoxSource.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
-            textBoxSource.BorderStyle = BorderStyle.FixedSingle;
             textBoxSource.Location = new Point(79, 38);
             textBoxSource.Name = "textBoxSource";
             textBoxSource.Size = new Size(504, 23);
@@ -187,7 +185,7 @@ namespace TakeoutWrangler
             groupBoxDestination.Controls.Add(labelDestination);
             groupBoxDestination.Controls.Add(textBoxDestination);
             groupBoxDestination.Controls.Add(labelPattern);
-            groupBoxDestination.Location = new Point(12, 225);
+            groupBoxDestination.Location = new Point(12, 213);
             groupBoxDestination.Name = "groupBoxDestination";
             groupBoxDestination.Size = new Size(680, 133);
             groupBoxDestination.TabIndex = 6;
@@ -197,7 +195,6 @@ namespace TakeoutWrangler
             // textBoxDestinationPattern
             // 
             textBoxDestinationPattern.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
-            textBoxDestinationPattern.BorderStyle = BorderStyle.FixedSingle;
             textBoxDestinationPattern.Location = new Point(170, 91);
             textBoxDestinationPattern.Name = "textBoxDestinationPattern";
             textBoxDestinationPattern.Size = new Size(298, 23);
@@ -226,7 +223,7 @@ namespace TakeoutWrangler
             // buttonDestinationDialog
             // 
             buttonDestinationDialog.Anchor = AnchorStyles.Top | AnchorStyles.Right;
-            buttonDestinationDialog.Location = new Point(647, 35);
+            buttonDestinationDialog.Location = new Point(647, 36);
             buttonDestinationDialog.Name = "buttonDestinationDialog";
             buttonDestinationDialog.Size = new Size(27, 23);
             buttonDestinationDialog.TabIndex = 11;
@@ -284,7 +281,7 @@ namespace TakeoutWrangler
             groupBoxAction.Controls.Add(radioButtonList);
             groupBoxAction.Location = new Point(12, 134);
             groupBoxAction.Name = "groupBoxAction";
-            groupBoxAction.Size = new Size(680, 85);
+            groupBoxAction.Size = new Size(680, 73);
             groupBoxAction.TabIndex = 10;
             groupBoxAction.TabStop = false;
             groupBoxAction.Text = "Actions";
@@ -293,7 +290,7 @@ namespace TakeoutWrangler
             // 
             buttonCancel.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
             buttonCancel.DialogResult = DialogResult.Cancel;
-            buttonCancel.Location = new Point(617, 368);
+            buttonCancel.Location = new Point(617, 352);
             buttonCancel.Name = "buttonCancel";
             buttonCancel.Size = new Size(75, 23);
             buttonCancel.TabIndex = 11;
@@ -304,7 +301,7 @@ namespace TakeoutWrangler
             // 
             buttonOkay.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
             buttonOkay.DialogResult = DialogResult.OK;
-            buttonOkay.Location = new Point(536, 368);
+            buttonOkay.Location = new Point(536, 352);
             buttonOkay.Name = "buttonOkay";
             buttonOkay.Size = new Size(75, 23);
             buttonOkay.TabIndex = 12;
@@ -318,7 +315,7 @@ namespace TakeoutWrangler
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
             CancelButton = buttonCancel;
-            ClientSize = new Size(704, 401);
+            ClientSize = new Size(704, 381);
             Controls.Add(buttonOkay);
             Controls.Add(buttonCancel);
             Controls.Add(groupBoxAction);
@@ -327,9 +324,9 @@ namespace TakeoutWrangler
             Icon = (Icon)resources.GetObject("$this.Icon");
             MaximizeBox = false;
             MinimizeBox = false;
-            MinimumSize = new Size(720, 440);
+            MinimumSize = new Size(720, 420);
             Name = "SettingsForm";
-            Text = "Settings";
+            Text = "Takeout Wrangler Settings";
             Load += SettingsForm_Load;
             groupBoxSource.ResumeLayout(false);
             groupBoxSource.PerformLayout();
