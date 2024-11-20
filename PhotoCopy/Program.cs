@@ -1,41 +1,20 @@
-//  <@$&< copyright begin >&$@> 8EF3F3608034F1A9CC6F945BA1A2053665BCA4FFC65BF31743F47CE665FDB0FB:20241017.A:2024:10:17:18:28
+//  <@$&< copyright begin >&$@> D50225522CB19A3A2E3CA10257DC538D19677A6406D028F0BBE01DE33387A4EA:20241017.A:2024:11:16:13:40
 // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 // Copyright © 2024 Stewart A. Nutter - All Rights Reserved.
-// 
-// This software application and source code is copyrighted and is licensed
-// for use by you only. Only this product's installation files may be shared.
-// 
-// This license does not allow the removal or code changes that cause the
-// ignoring, or modifying the copyright in any form.
-// 
-// This software is licensed "as is" and no warranty is implied or given.
-// 
-// Stewart A. Nutter
-// 711 Indigo Ln
-// Waunakee, WI  53597
+// No warranty is implied or given.
 // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 // <@$&< copyright end >&$@>
 
-using System;
-using System.Collections.Generic;
 using PhotoCopyLibrary;
+using System;
 
-// PixExpress
-// PixGuard
-// PixPreserve
-// PicturePreserve
-// MyMemories
-// AllMyPhotos
-// MyPhotoGuardian
-// PhotoWrangler
-
-namespace PhotoExtractApp;
+namespace TOWranglerCmdline;
 
 internal static class Program
 {
     static int Main(string[] args)
     {
-        PhotoCopier photoCopier = new PhotoCopier(OutputHandler);
+        PhotoCopier photoCopier = new PhotoCopier(OutputHandler, StatusHandler);
         Configs configs = photoCopier.GetConfiguration();
 
         configs.LoadAppSettings();
@@ -44,16 +23,19 @@ internal static class Program
         configs.GetBool("help", out bool showHelp);
         configs.GetString("source", out string sourceDir);
         configs.GetString("destination", out string destinationDir);
-        configs.GetString("action", out string actionText);
         configs.GetString("pattern", out string pattern);
-        configs.GetString("speed", out string speedText);
         configs.GetString("filter", out string fileFilter);
-        configs.GetBool("quiet", out bool quiet);
+        configs.GetString("logging", out string loggingString);
+        configs.GetString("action", out string actionString);
+        configs.GetBool("listonly", out bool listOnly);
 
-        int result = photoCopier.Initialize(nameof(PhotoExtractApp), showHelp, sourceDir, destinationDir, actionText, pattern, fileFilter, quiet);
-        if (result != 0) return result;
+        if (!Enum.TryParse(actionString, true, out PhotoCopierActions behavior)) behavior = PhotoCopierActions.Copy;
+        if (!Enum.TryParse(loggingString, true, out LoggingVerbosity logging)) logging = LoggingVerbosity.Verbose;
 
-        return photoCopier.RunAsync().GetAwaiter().GetResult();
+        int result = photoCopier.Initialize(nameof(TOWranglerCmdline), showHelp, sourceDir, destinationDir, behavior, pattern, fileFilter, logging, listOnly);
+        if (result != (int)ReturnCode.Success) return result;
+
+        return (int)photoCopier.RunAsync().GetAwaiter().GetResult();
     }
 
     private static void OutputHandler(string output)
@@ -62,5 +44,9 @@ internal static class Program
             Console.WriteLine(output);
         else
             Console.WriteLine();
+    }
+
+    private static void StatusHandler(string output)
+    {
     }
 }

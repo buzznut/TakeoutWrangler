@@ -1,31 +1,12 @@
-//  <@$&< copyright begin >&$@> 8EF3F3608034F1A9CC6F945BA1A2053665BCA4FFC65BF31743F47CE665FDB0FB:20241017.A:2024:10:17:18:28
+//  <@$&< copyright begin >&$@> D50225522CB19A3A2E3CA10257DC538D19677A6406D028F0BBE01DE33387A4EA:20241017.A:2024:11:16:13:40
 // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 // Copyright © 2024 Stewart A. Nutter - All Rights Reserved.
-// 
-// This software application and source code is copyrighted and is licensed
-// for use by you only. Only this product's installation files may be shared.
-// 
-// This license does not allow the removal or code changes that cause the
-// ignoring, or modifying the copyright in any form.
-// 
-// This software is licensed "as is" and no warranty is implied or given.
-// 
-// Stewart A. Nutter
-// 711 Indigo Ln
-// Waunakee, WI  53597
+// No warranty is implied or given.
 // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 // <@$&< copyright end >&$@>
 
-using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
-using System.Drawing;
-using System.Linq;
+using PhotoCopyLibrary;
 using System.Text;
-using System.Threading.Tasks;
-using System.Windows.Forms;
-using static System.Windows.Forms.VisualStyles.VisualStyleElement;
 
 namespace TakeoutWrangler;
 
@@ -35,46 +16,60 @@ public partial class SettingsForm : Form
     public string Destination { get; set; }
     public string Filter { get; set; }
     public string Pattern { get; set; }
-    public bool Quiet { get; set; }
-    public string ActionText { get; set; }
+    public bool ListOnly { get; set; }
+    public LoggingVerbosity Logging { get; set; }
+    public PhotoCopierActions Behavior { get; set; }
 
     public SettingsForm()
     {
+        SuspendLayout();
         InitializeComponent();
-    }
 
-    private void radioButtonCopy_CheckedChanged(object sender, EventArgs e)
-    {
-        if (radioButtonCopy.Checked)
+        foreach (PhotoCopierActions action in Enum.GetValues(typeof(PhotoCopierActions)))
         {
-            checkBoxQuiet.Enabled = true;
+            comboBoxActions.Items.Add(action);
         }
-    }
+        comboBoxActions.SelectedItem = PhotoCopierActions.Copy;
 
-    private void radioButtonList_CheckedChanged(object sender, EventArgs e)
-    {
-        if (radioButtonList.Checked)
+        foreach (LoggingVerbosity verbosity in Enum.GetValues(typeof(LoggingVerbosity)))
         {
-            checkBoxQuiet.Checked = false;
-            checkBoxQuiet.Enabled = false;
+            comboBoxVerbosity.Items.Add(verbosity);
         }
+        comboBoxVerbosity.SelectedItem = LoggingVerbosity.Verbose;
+
+        checkBoxList.Checked = ListOnly;
+
+        SetActionDescription();
+
+        ResumeLayout(true);
     }
 
     private void SettingsForm_Load(object sender, EventArgs e)
     {
+        SuspendLayout();
+
         textBoxSource.Text = Source;
         textBoxDestination.Text = Destination;
         textBoxFileFilter.Text = Filter;
         textBoxDestinationPattern.Text = Pattern;
-        radioButtonCopy.Checked = ActionText.Equals(PhotoCopierActions.Copy.ToString(), StringComparison.OrdinalIgnoreCase);
-        radioButtonList.Checked = ActionText.Equals(PhotoCopierActions.List.ToString(), StringComparison.OrdinalIgnoreCase);
-        checkBoxQuiet.Checked = Quiet;
+
+        comboBoxActions.SelectedItem = Behavior;
+        comboBoxActions.SelectedIndex = comboBoxActions.FindStringExact(Behavior.ToString());
+
+        comboBoxVerbosity.SelectedItem = Logging;
+        comboBoxVerbosity.SelectedIndex = comboBoxVerbosity.FindStringExact(Logging.ToString());
+
+        checkBoxList.Checked = ListOnly;
+
+        SetActionDescription();
+
+        ResumeLayout(true);
     }
 
     private void buttonOkay_Click(object sender, EventArgs e)
     {
         bool changed = false;
-        
+
         changed |= Source != textBoxSource.Text;
         Source = textBoxSource.Text;
 
@@ -87,17 +82,16 @@ public partial class SettingsForm : Form
         changed |= Pattern != textBoxDestinationPattern.Text;
         Pattern = textBoxDestinationPattern.Text;
 
-        changed |= Quiet != checkBoxQuiet.Checked;
-        Quiet = checkBoxQuiet.Checked;
+        PhotoCopierActions behavior = (comboBoxActions.SelectedItem as PhotoCopierActions?).GetValueOrDefault(PhotoCopierActions.Copy);
+        changed |= Behavior != behavior;
+        Behavior = behavior;
 
-        string actionText = null;
-        if (radioButtonCopy.Checked)
-            actionText = PhotoCopierActions.Copy.ToString();
-        else if (radioButtonList.Checked)
-            actionText = PhotoCopierActions.List.ToString();
+        LoggingVerbosity logging = (comboBoxVerbosity.SelectedItem as LoggingVerbosity?).GetValueOrDefault(LoggingVerbosity.Verbose);
+        changed |= Logging != logging;
+        Logging = logging;
 
-        changed |= ActionText != actionText;
-        ActionText = actionText;
+        changed |= ListOnly != checkBoxList.Checked;
+        ListOnly = checkBoxList.Checked;
 
         if (changed)
         {
@@ -145,5 +139,42 @@ public partial class SettingsForm : Form
         }
 
         return null;
+    }
+
+    private void SetActionDescription()
+    {
+        StringBuilder sb = new StringBuilder();
+
+        if (ListOnly) sb.Append("(List only - no changes) ");
+
+        switch (((PhotoCopierActions?)comboBoxActions.SelectedItem).GetValueOrDefault(PhotoCopierActions.Copy))
+        {
+            case PhotoCopierActions.Copy:
+                sb.Append("Copy media files from takeout zip archives to folder");
+                break;
+            case PhotoCopierActions.Reorder:
+                sb.Append("Reorder media files to match new file pattern");
+                break;
+            case PhotoCopierActions.Overwrite:
+                sb.Append("Overwrite all media files to folder");
+                break;
+        }
+
+        textBoxActionDescription.Text = sb.ToString();
+    }
+
+    private void comboBoxActions_SelectedIndexChanged(object sender, EventArgs e)
+    {
+        PhotoCopierActions newBehavior = (comboBoxActions.SelectedItem as PhotoCopierActions?).GetValueOrDefault(PhotoCopierActions.Copy);
+        if (newBehavior == PhotoCopierActions.Reorder)
+        {
+            groupBoxSource.Enabled = false;
+        }
+        else
+        {
+            groupBoxSource.Enabled = true;
+        }
+
+        SetActionDescription();
     }
 }

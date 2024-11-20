@@ -1,13 +1,2 @@
 ﻿Copyright © 2024 Stewart A. Nutter - All Rights Reserved.
-
-This software application and source code is copyrighted and is licensed 
-for use by you only. Only this product's installation files may be shared.
-
-This license does not allow the removal or code changes that cause the 
-ignoring, or modifying the copyright in any form.
-
-This software is licensed "as is" and no warranty is implied or given.
-
-Stewart A. Nutter
-711 Indigo Ln
-Waunakee, WI  53597
+No warranty is implied or given.

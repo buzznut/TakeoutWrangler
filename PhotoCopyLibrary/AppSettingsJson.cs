@@ -1,18 +1,7 @@
-//  <@$&< copyright begin >&$@> 8EF3F3608034F1A9CC6F945BA1A2053665BCA4FFC65BF31743F47CE665FDB0FB:20241017.A:2024:10:17:18:28
+//  <@$&< copyright begin >&$@> D50225522CB19A3A2E3CA10257DC538D19677A6406D028F0BBE01DE33387A4EA:20241017.A:2024:11:16:13:40
 // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 // Copyright © 2024 Stewart A. Nutter - All Rights Reserved.
-// 
-// This software application and source code is copyrighted and is licensed
-// for use by you only. Only this product's installation files may be shared.
-// 
-// This license does not allow the removal or code changes that cause the
-// ignoring, or modifying the copyright in any form.
-// 
-// This software is licensed "as is" and no warranty is implied or given.
-// 
-// Stewart A. Nutter
-// 711 Indigo Ln
-// Waunakee, WI  53597
+// No warranty is implied or given.
 // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 // <@$&< copyright end >&$@>
 
@@ -54,6 +43,7 @@ public class AppSettingsJson
         }
         catch (Exception ex)
         {
+            var foo = ex;
             throw;
         }
     }
@@ -72,6 +62,7 @@ public class AppSettingsJson
         }
         catch (Exception ex)
         {
+            var foo = ex;
             return false;
         }
     }
@@ -87,6 +78,7 @@ public class AppSettingsJson
         }
         catch (Exception ex)
         {
+            var foo = ex;
             throw;
         }
     }

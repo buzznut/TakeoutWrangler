@@ -1,18 +1,7 @@
-//  <@$&< copyright begin >&$@> 8EF3F3608034F1A9CC6F945BA1A2053665BCA4FFC65BF31743F47CE665FDB0FB:20241017.A:2024:10:17:18:28
+//  <@$&< copyright begin >&$@> D50225522CB19A3A2E3CA10257DC538D19677A6406D028F0BBE01DE33387A4EA:20241017.A:2024:11:16:13:40
 // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 // Copyright © 2024 Stewart A. Nutter - All Rights Reserved.
-// 
-// This software application and source code is copyrighted and is licensed
-// for use by you only. Only this product's installation files may be shared.
-// 
-// This license does not allow the removal or code changes that cause the
-// ignoring, or modifying the copyright in any form.
-// 
-// This software is licensed "as is" and no warranty is implied or given.
-// 
-// Stewart A. Nutter
-// 711 Indigo Ln
-// Waunakee, WI  53597
+// No warranty is implied or given.
 // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 // <@$&< copyright end >&$@>
 
@@ -63,12 +52,15 @@ namespace TakeoutWrangler
             labelDestinationRootFolderDescription = new Label();
             buttonDestinationDialog = new Button();
             textBoxDestination = new TextBox();
-            radioButtonCopy = new RadioButton();
-            radioButtonList = new RadioButton();
-            checkBoxQuiet = new CheckBox();
             groupBoxAction = new GroupBox();
+            comboBoxVerbosity = new ComboBox();
+            labelVerbosity = new Label();
+            labelActions = new Label();
+            comboBoxActions = new ComboBox();
             buttonCancel = new Button();
             buttonOkay = new Button();
+            checkBoxList = new CheckBox();
+            textBoxActionDescription = new TextBox();
             groupBoxSource.SuspendLayout();
             groupBoxDestination.SuspendLayout();
             groupBoxAction.SuspendLayout();
@@ -80,26 +72,26 @@ namespace TakeoutWrangler
             labelSource.Location = new Point(14, 41);
             labelSource.Name = "labelSource";
             labelSource.Size = new Size(58, 15);
-            labelSource.TabIndex = 0;
+            labelSource.TabIndex = 1;
             labelSource.Text = "Directory:";
             // 
             // labelDestination
             // 
             labelDestination.AutoSize = true;
-            labelDestination.Location = new Point(84, 39);
+            labelDestination.Location = new Point(85, 39);
             labelDestination.Name = "labelDestination";
-            labelDestination.Size = new Size(69, 15);
+            labelDestination.Size = new Size(77, 15);
             labelDestination.TabIndex = 1;
-            labelDestination.Text = "Root folder:";
+            labelDestination.Text = "Media folder:";
             // 
             // labelPattern
             // 
             labelPattern.AutoSize = true;
             labelPattern.Location = new Point(11, 94);
             labelPattern.Name = "labelPattern";
-            labelPattern.Size = new Size(142, 15);
-            labelPattern.TabIndex = 3;
-            labelPattern.Text = "New folder name pattern:";
+            labelPattern.Size = new Size(151, 15);
+            labelPattern.TabIndex = 5;
+            labelPattern.Text = "Media folder name pattern:";
             // 
             // labelFilter
             // 
@@ -123,7 +115,7 @@ namespace TakeoutWrangler
             groupBoxSource.Location = new Point(12, 12);
             groupBoxSource.Name = "groupBoxSource";
             groupBoxSource.Size = new Size(680, 116);
-            groupBoxSource.TabIndex = 5;
+            groupBoxSource.TabIndex = 0;
             groupBoxSource.TabStop = false;
             groupBoxSource.Text = "Takeout files";
             // 
@@ -135,7 +127,7 @@ namespace TakeoutWrangler
             labelArchiveFilter.Location = new Point(233, 72);
             labelArchiveFilter.Name = "labelArchiveFilter";
             labelArchiveFilter.Size = new Size(215, 15);
-            labelArchiveFilter.TabIndex = 9;
+            labelArchiveFilter.TabIndex = 6;
             labelArchiveFilter.Text = "Archive file filter (default: takeout-*.zip)";
             // 
             // buttonSourceDialog
@@ -144,7 +136,7 @@ namespace TakeoutWrangler
             buttonSourceDialog.Location = new Point(589, 38);
             buttonSourceDialog.Name = "buttonSourceDialog";
             buttonSourceDialog.Size = new Size(27, 23);
-            buttonSourceDialog.TabIndex = 8;
+            buttonSourceDialog.TabIndex = 3;
             buttonSourceDialog.Text = "...";
             buttonSourceDialog.UseVisualStyleBackColor = true;
             buttonSourceDialog.Click += buttonSourceDialog_Click;
@@ -156,7 +148,7 @@ namespace TakeoutWrangler
             labelSourceDescription.Location = new Point(78, 21);
             labelSourceDescription.Name = "labelSourceDescription";
             labelSourceDescription.Size = new Size(299, 15);
-            labelSourceDescription.TabIndex = 7;
+            labelSourceDescription.TabIndex = 0;
             labelSourceDescription.Text = "Folder that contains the archive zip file(s) 'takeout-*.zip'";
             // 
             // textBoxFileFilter
@@ -165,7 +157,7 @@ namespace TakeoutWrangler
             textBoxFileFilter.Location = new Point(78, 69);
             textBoxFileFilter.Name = "textBoxFileFilter";
             textBoxFileFilter.Size = new Size(150, 23);
-            textBoxFileFilter.TabIndex = 6;
+            textBoxFileFilter.TabIndex = 5;
             // 
             // textBoxSource
             // 
@@ -173,7 +165,7 @@ namespace TakeoutWrangler
             textBoxSource.Location = new Point(79, 38);
             textBoxSource.Name = "textBoxSource";
             textBoxSource.Size = new Size(504, 23);
-            textBoxSource.TabIndex = 5;
+            textBoxSource.TabIndex = 2;
             // 
             // groupBoxDestination
             // 
@@ -185,10 +177,10 @@ namespace TakeoutWrangler
             groupBoxDestination.Controls.Add(labelDestination);
             groupBoxDestination.Controls.Add(textBoxDestination);
             groupBoxDestination.Controls.Add(labelPattern);
-            groupBoxDestination.Location = new Point(12, 213);
+            groupBoxDestination.Location = new Point(12, 249);
             groupBoxDestination.Name = "groupBoxDestination";
             groupBoxDestination.Size = new Size(680, 133);
-            groupBoxDestination.TabIndex = 6;
+            groupBoxDestination.TabIndex = 2;
             groupBoxDestination.TabStop = false;
             groupBoxDestination.Text = "Target";
             // 
@@ -198,7 +190,7 @@ namespace TakeoutWrangler
             textBoxDestinationPattern.Location = new Point(170, 91);
             textBoxDestinationPattern.Name = "textBoxDestinationPattern";
             textBoxDestinationPattern.Size = new Size(298, 23);
-            textBoxDestinationPattern.TabIndex = 14;
+            textBoxDestinationPattern.TabIndex = 6;
             // 
             // labelDestinationFolderNamePatternDescription
             // 
@@ -207,7 +199,7 @@ namespace TakeoutWrangler
             labelDestinationFolderNamePatternDescription.Location = new Point(170, 73);
             labelDestinationFolderNamePatternDescription.Name = "labelDestinationFolderNamePatternDescription";
             labelDestinationFolderNamePatternDescription.Size = new Size(384, 15);
-            labelDestinationFolderNamePatternDescription.TabIndex = 13;
+            labelDestinationFolderNamePatternDescription.TabIndex = 4;
             labelDestinationFolderNamePatternDescription.Text = " Use: text, $y=year, $m=month, $d=day, $h=hour (media date).  '$y_$m'";
             // 
             // labelDestinationRootFolderDescription
@@ -217,7 +209,7 @@ namespace TakeoutWrangler
             labelDestinationRootFolderDescription.Location = new Point(170, 19);
             labelDestinationRootFolderDescription.Name = "labelDestinationRootFolderDescription";
             labelDestinationRootFolderDescription.Size = new Size(221, 15);
-            labelDestinationRootFolderDescription.TabIndex = 12;
+            labelDestinationRootFolderDescription.TabIndex = 0;
             labelDestinationRootFolderDescription.Text = "Folder to for local media files and folders.";
             // 
             // buttonDestinationDialog
@@ -226,7 +218,7 @@ namespace TakeoutWrangler
             buttonDestinationDialog.Location = new Point(647, 36);
             buttonDestinationDialog.Name = "buttonDestinationDialog";
             buttonDestinationDialog.Size = new Size(27, 23);
-            buttonDestinationDialog.TabIndex = 11;
+            buttonDestinationDialog.TabIndex = 3;
             buttonDestinationDialog.Text = "...";
             buttonDestinationDialog.UseVisualStyleBackColor = true;
             buttonDestinationDialog.Click += buttonDestinationDialog_Click;
@@ -237,63 +229,69 @@ namespace TakeoutWrangler
             textBoxDestination.Location = new Point(170, 36);
             textBoxDestination.Name = "textBoxDestination";
             textBoxDestination.Size = new Size(471, 23);
-            textBoxDestination.TabIndex = 10;
-            // 
-            // radioButtonCopy
-            // 
-            radioButtonCopy.AutoSize = true;
-            radioButtonCopy.Location = new Point(6, 24);
-            radioButtonCopy.Name = "radioButtonCopy";
-            radioButtonCopy.Size = new Size(91, 19);
-            radioButtonCopy.TabIndex = 7;
-            radioButtonCopy.TabStop = true;
-            radioButtonCopy.Text = "Always copy";
-            radioButtonCopy.UseVisualStyleBackColor = true;
-            radioButtonCopy.CheckedChanged += radioButtonCopy_CheckedChanged;
-            // 
-            // radioButtonList
-            // 
-            radioButtonList.AutoSize = true;
-            radioButtonList.Location = new Point(6, 43);
-            radioButtonList.Name = "radioButtonList";
-            radioButtonList.Size = new Size(69, 19);
-            radioButtonList.TabIndex = 8;
-            radioButtonList.TabStop = true;
-            radioButtonList.Text = "List only";
-            radioButtonList.UseVisualStyleBackColor = true;
-            radioButtonList.CheckedChanged += radioButtonList_CheckedChanged;
-            // 
-            // checkBoxQuiet
-            // 
-            checkBoxQuiet.AutoSize = true;
-            checkBoxQuiet.Location = new Point(103, 24);
-            checkBoxQuiet.Name = "checkBoxQuiet";
-            checkBoxQuiet.Size = new Size(118, 19);
-            checkBoxQuiet.TabIndex = 9;
-            checkBoxQuiet.Text = "Quiet (copy only)";
-            checkBoxQuiet.UseVisualStyleBackColor = true;
+            textBoxDestination.TabIndex = 2;
             // 
             // groupBoxAction
             // 
             groupBoxAction.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
-            groupBoxAction.Controls.Add(radioButtonCopy);
-            groupBoxAction.Controls.Add(checkBoxQuiet);
-            groupBoxAction.Controls.Add(radioButtonList);
+            groupBoxAction.Controls.Add(textBoxActionDescription);
+            groupBoxAction.Controls.Add(checkBoxList);
+            groupBoxAction.Controls.Add(comboBoxVerbosity);
+            groupBoxAction.Controls.Add(labelVerbosity);
+            groupBoxAction.Controls.Add(labelActions);
+            groupBoxAction.Controls.Add(comboBoxActions);
             groupBoxAction.Location = new Point(12, 134);
             groupBoxAction.Name = "groupBoxAction";
-            groupBoxAction.Size = new Size(680, 73);
-            groupBoxAction.TabIndex = 10;
+            groupBoxAction.Size = new Size(680, 106);
+            groupBoxAction.TabIndex = 1;
             groupBoxAction.TabStop = false;
             groupBoxAction.Text = "Actions";
+            // 
+            // comboBoxVerbosity
+            // 
+            comboBoxVerbosity.DropDownStyle = ComboBoxStyle.DropDownList;
+            comboBoxVerbosity.FormattingEnabled = true;
+            comboBoxVerbosity.Location = new Point(323, 46);
+            comboBoxVerbosity.Name = "comboBoxVerbosity";
+            comboBoxVerbosity.Size = new Size(121, 23);
+            comboBoxVerbosity.TabIndex = 3;
+            // 
+            // labelVerbosity
+            // 
+            labelVerbosity.AutoSize = true;
+            labelVerbosity.Location = new Point(254, 50);
+            labelVerbosity.Name = "labelVerbosity";
+            labelVerbosity.Size = new Size(58, 15);
+            labelVerbosity.TabIndex = 2;
+            labelVerbosity.Text = "Verbosity:";
+            // 
+            // labelActions
+            // 
+            labelActions.AutoSize = true;
+            labelActions.Location = new Point(23, 50);
+            labelActions.Name = "labelActions";
+            labelActions.Size = new Size(50, 15);
+            labelActions.TabIndex = 0;
+            labelActions.Text = "Actions:";
+            // 
+            // comboBoxActions
+            // 
+            comboBoxActions.DropDownStyle = ComboBoxStyle.DropDownList;
+            comboBoxActions.FormattingEnabled = true;
+            comboBoxActions.Location = new Point(82, 46);
+            comboBoxActions.Name = "comboBoxActions";
+            comboBoxActions.Size = new Size(121, 23);
+            comboBoxActions.TabIndex = 1;
+            comboBoxActions.SelectedIndexChanged += comboBoxActions_SelectedIndexChanged;
             // 
             // buttonCancel
             // 
             buttonCancel.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
             buttonCancel.DialogResult = DialogResult.Cancel;
-            buttonCancel.Location = new Point(617, 352);
+            buttonCancel.Location = new Point(617, 389);
             buttonCancel.Name = "buttonCancel";
             buttonCancel.Size = new Size(75, 23);
-            buttonCancel.TabIndex = 11;
+            buttonCancel.TabIndex = 4;
             buttonCancel.Text = "Cancel";
             buttonCancel.UseVisualStyleBackColor = true;
             // 
@@ -301,13 +299,36 @@ namespace TakeoutWrangler
             // 
             buttonOkay.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
             buttonOkay.DialogResult = DialogResult.OK;
-            buttonOkay.Location = new Point(536, 352);
+            buttonOkay.Location = new Point(536, 389);
             buttonOkay.Name = "buttonOkay";
             buttonOkay.Size = new Size(75, 23);
-            buttonOkay.TabIndex = 12;
+            buttonOkay.TabIndex = 3;
             buttonOkay.Text = "OK";
             buttonOkay.UseVisualStyleBackColor = true;
             buttonOkay.Click += buttonOkay_Click;
+            // 
+            // checkBoxList
+            // 
+            checkBoxList.AutoSize = true;
+            checkBoxList.Checked = true;
+            checkBoxList.CheckState = CheckState.Checked;
+            checkBoxList.Location = new Point(82, 22);
+            checkBoxList.Name = "checkBoxList";
+            checkBoxList.Size = new Size(174, 19);
+            checkBoxList.TabIndex = 4;
+            checkBoxList.Text = "List only - make no changes";
+            checkBoxList.UseVisualStyleBackColor = true;
+            // 
+            // textBoxActionDescription
+            // 
+            textBoxActionDescription.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+            textBoxActionDescription.BorderStyle = BorderStyle.None;
+            textBoxActionDescription.Font = new Font("Segoe UI", 9F, FontStyle.Italic);
+            textBoxActionDescription.Location = new Point(84, 77);
+            textBoxActionDescription.Name = "textBoxActionDescription";
+            textBoxActionDescription.Size = new Size(587, 16);
+            textBoxActionDescription.TabIndex = 5;
+            textBoxActionDescription.Text = "(action description)";
             // 
             // SettingsForm
             // 
@@ -315,7 +336,7 @@ namespace TakeoutWrangler
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
             CancelButton = buttonCancel;
-            ClientSize = new Size(704, 381);
+            ClientSize = new Size(704, 418);
             Controls.Add(buttonOkay);
             Controls.Add(buttonCancel);
             Controls.Add(groupBoxAction);
@@ -355,11 +376,14 @@ namespace TakeoutWrangler
         private TextBox textBoxDestinationPattern;
         private Label labelDestinationFolderNamePatternDescription;
         private Label labelDestinationRootFolderDescription;
-        private RadioButton radioButtonCopy;
-        private RadioButton radioButtonList;
-        private CheckBox checkBoxQuiet;
         private GroupBox groupBoxAction;
         private Button buttonCancel;
         private Button buttonOkay;
+        private Label labelActions;
+        private ComboBox comboBoxActions;
+        private ComboBox comboBoxVerbosity;
+        private Label labelVerbosity;
+        private TextBox textBoxActionDescription;
+        private CheckBox checkBoxList;
     }
 }

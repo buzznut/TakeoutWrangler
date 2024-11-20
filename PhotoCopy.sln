@@ -41,6 +41,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AddCopyright", "Tools\AddCo
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BumpVersion", "Tools\BumpVersion\BumpVersion.csproj", "{C4CA04E2-F5FC-4EB7-811D-A3D7C9599424}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ExifDataLibrary", "ExifDataLibrary\ExifDataLibrary.csproj", "{4A11AE63-1497-45A3-93B3-1CEB00C2944D}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -68,6 +70,10 @@ Global
 		{C4CA04E2-F5FC-4EB7-811D-A3D7C9599424}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{C4CA04E2-F5FC-4EB7-811D-A3D7C9599424}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C4CA04E2-F5FC-4EB7-811D-A3D7C9599424}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4A11AE63-1497-45A3-93B3-1CEB00C2944D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4A11AE63-1497-45A3-93B3-1CEB00C2944D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4A11AE63-1497-45A3-93B3-1CEB00C2944D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4A11AE63-1497-45A3-93B3-1CEB00C2944D}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

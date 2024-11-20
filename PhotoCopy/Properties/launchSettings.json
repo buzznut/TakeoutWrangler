@@ -2,7 +2,7 @@
   "profiles": {
     "PhotoCopy": {
       "commandName": "Project",
-      "commandLineArgs": "-action=List -quiet=false -source=\"C:\\Users\\sanut\\Downloads\" -destination=\"C:\\Users\\sanut\\OneDrive\\Pictures\""
+      "commandLineArgs": "-action=List -logging=change -source=\"C:\\Users\\sanut\\Downloads\" -destination=\"C:\\Users\\sanut\\OneDrive\\Pictures\""
     }
   }
 }

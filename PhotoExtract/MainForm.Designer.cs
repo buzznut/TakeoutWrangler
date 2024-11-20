@@ -1,18 +1,7 @@
-//  <@$&< copyright begin >&$@> 8EF3F3608034F1A9CC6F945BA1A2053665BCA4FFC65BF31743F47CE665FDB0FB:20241017.A:2024:10:17:18:28
+//  <@$&< copyright begin >&$@> D50225522CB19A3A2E3CA10257DC538D19677A6406D028F0BBE01DE33387A4EA:20241017.A:2024:11:16:13:40
 // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 // Copyright © 2024 Stewart A. Nutter - All Rights Reserved.
-// 
-// This software application and source code is copyrighted and is licensed
-// for use by you only. Only this product's installation files may be shared.
-// 
-// This license does not allow the removal or code changes that cause the
-// ignoring, or modifying the copyright in any form.
-// 
-// This software is licensed "as is" and no warranty is implied or given.
-// 
-// Stewart A. Nutter
-// 711 Indigo Ln
-// Waunakee, WI  53597
+// No warranty is implied or given.
 // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 // <@$&< copyright end >&$@>
 
@@ -61,6 +50,9 @@ namespace TakeoutWrangler
             buttonRun = new Button();
             printDialog = new PrintDialog();
             printDocument = new System.Drawing.Printing.PrintDocument();
+            textBoxStatus = new TextBox();
+            labelProgress = new Label();
+            timerIsRunning = new System.Windows.Forms.Timer(components);
             menuStripMainMenu.SuspendLayout();
             SuspendLayout();
             // 
@@ -83,26 +75,26 @@ namespace TakeoutWrangler
             // clearToolStripMenuItem
             // 
             clearToolStripMenuItem.Name = "clearToolStripMenuItem";
-            clearToolStripMenuItem.Size = new Size(180, 22);
+            clearToolStripMenuItem.Size = new Size(152, 22);
             clearToolStripMenuItem.Text = "Clear console";
             clearToolStripMenuItem.Click += clearToolStripMenuItem_Click;
             // 
             // toolStripMenuItemPrint
             // 
             toolStripMenuItemPrint.Name = "toolStripMenuItemPrint";
-            toolStripMenuItemPrint.Size = new Size(180, 22);
+            toolStripMenuItemPrint.Size = new Size(152, 22);
             toolStripMenuItemPrint.Text = "Print console...";
             toolStripMenuItemPrint.Click += toolStripMenuItemPrint_Click;
             // 
             // toolStripSeparator1
             // 
             toolStripSeparator1.Name = "toolStripSeparator1";
-            toolStripSeparator1.Size = new Size(177, 6);
+            toolStripSeparator1.Size = new Size(149, 6);
             // 
             // exitToolStripMenuItem
             // 
             exitToolStripMenuItem.Name = "exitToolStripMenuItem";
-            exitToolStripMenuItem.Size = new Size(180, 22);
+            exitToolStripMenuItem.Size = new Size(152, 22);
             exitToolStripMenuItem.Text = "Exit";
             exitToolStripMenuItem.Click += exitToolStripMenuItem_Click;
             // 
@@ -116,7 +108,7 @@ namespace TakeoutWrangler
             // settingsToolStripMenuItem
             // 
             settingsToolStripMenuItem.Name = "settingsToolStripMenuItem";
-            settingsToolStripMenuItem.Size = new Size(180, 22);
+            settingsToolStripMenuItem.Size = new Size(125, 22);
             settingsToolStripMenuItem.Text = "Settings...";
             settingsToolStripMenuItem.Click += settingsToolStripMenuItem_Click;
             // 
@@ -130,7 +122,7 @@ namespace TakeoutWrangler
             listBoxView.Location = new Point(5, 24);
             listBoxView.Name = "listBoxView";
             listBoxView.SelectionMode = SelectionMode.None;
-            listBoxView.Size = new Size(632, 298);
+            listBoxView.Size = new Size(632, 284);
             listBoxView.TabIndex = 1;
             listBoxView.SizeChanged += listBoxView_SizeChanged;
             // 
@@ -143,7 +135,7 @@ namespace TakeoutWrangler
             // 
             buttonRun.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
             buttonRun.Enabled = false;
-            buttonRun.Location = new Point(525, 326);
+            buttonRun.Location = new Point(525, 321);
             buttonRun.Name = "buttonRun";
             buttonRun.Size = new Size(112, 23);
             buttonRun.TabIndex = 2;
@@ -154,20 +146,43 @@ namespace TakeoutWrangler
             // printDialog
             // 
             printDialog.Document = printDocument;
-            printDialog.UseEXDialog = false;
-            printDialog.AllowSelection = false;
-            printDialog.AllowSomePages = false;
-            printDialog.AllowCurrentPage = false;
             // 
             // printDocument
             // 
             printDocument.PrintPage += printDocument_PrintPage;
+            // 
+            // textBoxStatus
+            // 
+            textBoxStatus.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
+            textBoxStatus.Location = new Point(69, 322);
+            textBoxStatus.Name = "textBoxStatus";
+            textBoxStatus.ReadOnly = true;
+            textBoxStatus.Size = new Size(148, 23);
+            textBoxStatus.TabIndex = 3;
+            // 
+            // labelProgress
+            // 
+            labelProgress.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
+            labelProgress.AutoSize = true;
+            labelProgress.Location = new Point(5, 324);
+            labelProgress.Name = "labelProgress";
+            labelProgress.Size = new Size(55, 15);
+            labelProgress.TabIndex = 4;
+            labelProgress.Text = "Progress:";
+            // 
+            // timerIsRunning
+            // 
+            timerIsRunning.Enabled = true;
+            timerIsRunning.Interval = 250;
+            timerIsRunning.Tick += timerIsRunning_Tick;
             // 
             // MainForm
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(642, 353);
+            Controls.Add(labelProgress);
+            Controls.Add(textBoxStatus);
             Controls.Add(buttonRun);
             Controls.Add(listBoxView);
             Controls.Add(menuStripMainMenu);
@@ -177,7 +192,6 @@ namespace TakeoutWrangler
             Name = "MainForm";
             Text = "Takeout Wrangler";
             Load += MainForm_Load;
-            Shown += MainForm_Shown;
             menuStripMainMenu.ResumeLayout(false);
             menuStripMainMenu.PerformLayout();
             ResumeLayout(false);
@@ -199,5 +213,8 @@ namespace TakeoutWrangler
         private ToolStripSeparator toolStripSeparator1;
         private ToolStripMenuItem settingsToolStripMenuItem;
         private ToolStripMenuItem clearToolStripMenuItem;
+        private TextBox textBoxStatus;
+        private Label labelProgress;
+        private System.Windows.Forms.Timer timerIsRunning;
     }
 }

@@ -4,7 +4,7 @@
       "source":  null,
       "destination": null,
       "action": "list",
-      "quiet":  false,
+      "logging": "change",
       "pattern": "$y_$m",
       "filter": "takeout-*.zip"
     }
