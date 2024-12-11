@@ -19,6 +19,7 @@ public partial class SettingsForm : Form
     public bool ListOnly { get; set; }
     public LoggingVerbosity Logging { get; set; }
     public PhotoCopierActions Behavior { get; set; }
+    public PhotoCopier PhotoCopierSession { get; set; }
 
     public SettingsForm()
     {
@@ -69,15 +70,16 @@ public partial class SettingsForm : Form
     private void buttonOkay_Click(object sender, EventArgs e)
     {
         bool changed = false;
+        string reason;
 
         changed |= Source != textBoxSource.Text;
         Source = textBoxSource.Text;
 
-        changed |= Destination != textBoxDestination.Text;
-        Destination = textBoxDestination.Text;
-
         changed |= Filter != textBoxFileFilter.Text;
         Filter = textBoxFileFilter.Text;
+
+        changed |= Destination != textBoxDestination.Text;
+        Destination = textBoxDestination.Text;
 
         changed |= Pattern != textBoxDestinationPattern.Text;
         Pattern = textBoxDestinationPattern.Text;
@@ -95,14 +97,29 @@ public partial class SettingsForm : Form
 
         if (changed)
         {
+            if (!PhotoCopierSession.ValidateSource(textBoxSource.Text, Filter, out reason))
+            {
+                DialogResult validateResult = MessageBox.Show($"{reason}. Continue?", "Validate Source", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+                if (validateResult == DialogResult.No)
+                {
+                    DialogResult = DialogResult.None;
+                    return;
+                }
+            }
+
+            if (!PhotoCopierSession.ValidateDestination(textBoxDestination.Text, out reason))
+            {
+                MessageBox.Show(reason, "Validate Target", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                DialogResult = DialogResult.None;
+                return;
+            }
+
             DialogResult result = MessageBox.Show("Keep changed values?", "Settings have changed", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
             if (result == DialogResult.Yes)
             {
                 DialogResult = DialogResult.Yes;
             }
         }
-
-        Close();
     }
 
     private void buttonSourceDialog_Click(object sender, EventArgs e)
@@ -156,7 +173,7 @@ public partial class SettingsForm : Form
                 sb.Append("Reorder media files to match new file pattern");
                 break;
             case PhotoCopierActions.Overwrite:
-                sb.Append("Overwrite all media files to folder");
+                sb.Append("Overwrite media files from takeout zip archives to folder");
                 break;
         }
 
@@ -166,15 +183,7 @@ public partial class SettingsForm : Form
     private void comboBoxActions_SelectedIndexChanged(object sender, EventArgs e)
     {
         PhotoCopierActions newBehavior = (comboBoxActions.SelectedItem as PhotoCopierActions?).GetValueOrDefault(PhotoCopierActions.Copy);
-        if (newBehavior == PhotoCopierActions.Reorder)
-        {
-            groupBoxSource.Enabled = false;
-        }
-        else
-        {
-            groupBoxSource.Enabled = true;
-        }
-
+        groupBoxSource.Enabled = newBehavior != PhotoCopierActions.Reorder;
         SetActionDescription();
     }
 }

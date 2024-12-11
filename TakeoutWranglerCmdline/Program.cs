@@ -8,7 +8,7 @@
 using PhotoCopyLibrary;
 using System;
 
-namespace TOWranglerCmdline;
+namespace TakeoutWranglerCmdline;
 
 internal static class Program
 {
@@ -32,7 +32,7 @@ internal static class Program
         if (!Enum.TryParse(actionString, true, out PhotoCopierActions behavior)) behavior = PhotoCopierActions.Copy;
         if (!Enum.TryParse(loggingString, true, out LoggingVerbosity logging)) logging = LoggingVerbosity.Verbose;
 
-        int result = photoCopier.Initialize(nameof(TOWranglerCmdline), showHelp, sourceDir, destinationDir, behavior, pattern, fileFilter, logging, listOnly);
+        int result = photoCopier.Initialize(nameof(TakeoutWranglerCmdline), showHelp, sourceDir, destinationDir, behavior, pattern, fileFilter, logging, listOnly);
         if (result != (int)ReturnCode.Success) return result;
 
         return (int)photoCopier.RunAsync().GetAwaiter().GetResult();

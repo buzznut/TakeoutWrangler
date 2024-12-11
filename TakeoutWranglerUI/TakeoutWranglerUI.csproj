@@ -27,10 +27,21 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="Keep.Viewer.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Remove="OldHelpViewer.resx" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Compile Include="C:\Users\sanut\OneDrive\GitCode\PhotoCopy\GlobalAssemblyInfo.cs" Link="GlobalAssemblyInfo.cs" />
   </ItemGroup>
 
   <ItemGroup>
+    <Content Include="..\Documentation\LoadingBitmap.bmp" Link="ResourceFiles\LoadingBitmap.bmp">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
     <Content Include="photos.ico" />
   </ItemGroup>
 
@@ -39,6 +50,15 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Include="..\Documentation\About.pdf" Link="ResourceFiles\About.pdf">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\Documentation\Help.pdf" Link="ResourceFiles\Help.pdf">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\Documentation\HowToGetYourPhotosFromGoogleTakeout.pdf" Link="ResourceFiles\HowToGetYourPhotosFromGoogleTakeout.pdf">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Include="..\Documentation\photos.ico">
       <Pack>True</Pack>
       <PackagePath>\</PackagePath>
@@ -46,11 +66,11 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Update="Properties\Resources.Designer.cs">
-      <DesignTime>True</DesignTime>
-      <AutoGen>True</AutoGen>
-      <DependentUpon>Resources.resx</DependentUpon>
-    </Compile>
+    <PackageReference Include="Autoupdater.NET.Official" Version="1.9.2" />
+    <PackageReference Include="FreeSpire.PDF" Version="10.2.0" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Compile Update="Properties\Settings.Designer.cs">
       <DesignTimeSharedInput>True</DesignTimeSharedInput>
       <AutoGen>True</AutoGen>
@@ -59,17 +79,14 @@
   </ItemGroup>
 
   <ItemGroup>
-    <EmbeddedResource Update="Properties\Resources.resx">
-      <Generator>ResXFileCodeGenerator</Generator>
-      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
-    </EmbeddedResource>
-  </ItemGroup>
-
-  <ItemGroup>
     <None Update="Properties\Settings.settings">
       <Generator>SettingsSingleFileGenerator</Generator>
       <LastGenOutput>Settings.Designer.cs</LastGenOutput>
     </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="ResourceFiles\" />
   </ItemGroup>
 
 </Project>

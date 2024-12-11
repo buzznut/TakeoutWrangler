@@ -17,6 +17,7 @@ using MetadataExtractor.Formats.QuickTime;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System.Collections.Concurrent;
+using System.ComponentModel.Design.Serialization;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO.Compression;
@@ -58,7 +59,7 @@ public class PhotoCopier
         new ConfigParam { Name = "filter", Default="takeout-*.zip", PType = ParamType.String },
         new ConfigParam { Name = "source", Synonyms = ["src", "sourceDir"], PType = ParamType.String },
         new ConfigParam { Name = "destination", Synonyms = ["dst", "dest", "tgt", "target", "destinationDir"], PType = ParamType.String },
-        new ConfigParam { Name = "logging", PType = ParamType.String, Default = nameof(LoggingVerbosity.Change) },
+        new ConfigParam { Name = "logging", PType = ParamType.String, Default = nameof(LoggingVerbosity.Verbose) },
         new ConfigParam { Name = "help", Synonyms = ["?"], Default = false, PType = ParamType.Bool },
         new ConfigParam { Name = "action", Default = nameof(PhotoCopierActions.Copy), PType = ParamType.String },
         new ConfigParam { Name = "pattern", Default = "$y_$m", PType = ParamType.String },
@@ -808,22 +809,6 @@ public class PhotoCopier
         return result.ToArray();
     }
 
-    //private static bool BytesEqual(byte[] zipHash, byte[] fileHash)
-    //{
-    //    // both null - same
-    //    if (zipHash == null || fileHash == null) return true;
-
-    //    // if lengths different then not the same
-    //    if (zipHash.Length != fileHash.Length) return false;
-
-    //    for (int ii = 0; ii < zipHash.Length; ii++)
-    //    {
-    //        if (zipHash[ii] != fileHash[ii]) return false;
-    //    }
-
-    //    return true;
-    //}
-
     private static string[] FindNumberStrings(string fileName)
     {
         List<string> strings = new List<string>();
@@ -1202,5 +1187,79 @@ public class PhotoCopier
         }
 
         return new MemoryStream(Convert.ToInt32(length));
+    }
+
+    public bool ValidateSource(string folderPath, string filter, out string reason)
+    {
+        reason = string.Empty;
+
+        try
+        {
+            if (!System.IO.Directory.Exists(folderPath))
+            {
+                reason = $"Could not find: {folderPath}";
+                return false;
+            }
+
+            // test file existence
+            if (!System.IO.Directory.EnumerateFiles(folderPath, filter, SearchOption.TopDirectoryOnly).Any())
+            {
+                reason = $"Could not locate any media archive folders matching {filter ?? ""}";
+                return false;
+            }
+        }
+        catch (Exception ex)
+        {
+            reason= ex.Message;
+            return false;
+        }
+
+        return true;
+    }
+
+    public bool ValidateDestination(string folderPath, out string reason)
+    {
+        reason = string.Empty;
+
+        try
+        {
+            if (!System.IO.Directory.Exists(folderPath))
+            {
+                reason = $"Could not find: {folderPath}";
+                return false;
+            }
+
+            // test permissions
+            Random rnd = new Random();
+            StringBuilder sb = new StringBuilder();
+            for (int ii = 0; ii < 8; ii++)
+            {
+                sb.Append(Convert.ToChar('A' + rnd.Next() % 26));
+            }
+            string testFile = Path.Combine(folderPath, sb.ToString() + ".tmp");
+            using (FileStream stream = new FileStream(testFile, FileMode.Create, FileAccess.ReadWrite, FileShare.None, 4096, FileOptions.DeleteOnClose))
+            {
+                byte test = 200;
+
+                stream.WriteByte(test);
+                stream.Flush();
+
+                stream.Position = 0;
+                int b = stream.ReadByte();
+
+                if (b != test)
+                {
+                    reason = $"Could not write to test file";
+                    return false;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            reason = ex.Message;
+            return false;
+        }
+
+        return true;
     }
 }

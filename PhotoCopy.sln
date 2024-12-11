@@ -3,30 +3,42 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.1.32328.378
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TOWranglerCmdline", "PhotoCopy\TOWranglerCmdline.csproj", "{64F69761-246C-4605-B85F-5F8B8050DBE6}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TakeoutWranglerCmdline", "TakeoutWranglerCmdline\TakeoutWranglerCmdline.csproj", "{64F69761-246C-4605-B85F-5F8B8050DBE6}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{403BF1C6-0D7E-40D8-A029-2FBDF12B1A4B}"
 	ProjectSection(SolutionItems) = preProject
 		.editorconfig = .editorconfig
+		Documentation\Copyright.txt = Documentation\Copyright.txt
 		GlobalAssemblyInfo.tt = GlobalAssemblyInfo.tt
+		Documentation\photos.ico = Documentation\photos.ico
+		Documentation\selfsigncert.pfx = Documentation\selfsigncert.pfx
 	EndProjectSection
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PhotoCopyLibrary", "PhotoCopyLibrary\PhotoCopyLibrary.csproj", "{BCD20D41-9F27-49B5-A933-41D1F76857C4}"
 	ProjectSection(ProjectDependencies) = postProject
+		{B15FE8EB-2792-4A17-9EE9-5A5715E1B31B} = {B15FE8EB-2792-4A17-9EE9-5A5715E1B31B}
 		{C4CA04E2-F5FC-4EB7-811D-A3D7C9599424} = {C4CA04E2-F5FC-4EB7-811D-A3D7C9599424}
 	EndProjectSection
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TOWranglerUI", "PhotoExtract\TOWranglerUI.csproj", "{E8DFA628-0FE5-481C-93D2-649CDCC8F76D}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TakeoutWranglerUI", "TakeoutWranglerUI\TakeoutWranglerUI.csproj", "{E8DFA628-0FE5-481C-93D2-649CDCC8F76D}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{15597BF9-FB7A-4ED7-A767-B442BFDD4B07}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TestLibrary", "TestLibrary\TestLibrary.csproj", "{95579CBD-B6C4-4149-86FC-1310E5992385}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Installers", "Installers", "{ECB156EB-21C1-478B-9419-4F3EB046809E}"
+	ProjectSection(SolutionItems) = preProject
+		Installers\BuildSetupArgs.txt = Installers\BuildSetupArgs.txt
+		Installers\Changes.txt = Installers\Changes.txt
+		Installers\ProjectsToSign.txt = Installers\ProjectsToSign.txt
+	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Documentation", "Documentation", "{5D517154-695F-448D-ACD6-1ED3CF836DD8}"
 	ProjectSection(SolutionItems) = preProject
+		Documentation\About.docx = Documentation\About.docx
 		Documentation\Copyright.txt = Documentation\Copyright.txt
+		Documentation\Help.docx = Documentation\Help.docx
+		Documentation\HowToGetYourPhotosFromGoogleTakeout.docx = Documentation\HowToGetYourPhotosFromGoogleTakeout.docx
 		Documentation\photos.ico = Documentation\photos.ico
 	EndProjectSection
 EndProject
@@ -42,6 +54,17 @@ EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BumpVersion", "Tools\BumpVersion\BumpVersion.csproj", "{C4CA04E2-F5FC-4EB7-811D-A3D7C9599424}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ExifDataLibrary", "ExifDataLibrary\ExifDataLibrary.csproj", "{4A11AE63-1497-45A3-93B3-1CEB00C2944D}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BuildSetups", "Tools\UpdateInfo\BuildSetups.csproj", "{ABD873B0-B368-4288-BBD8-07AAC13658A0}"
+	ProjectSection(ProjectDependencies) = postProject
+		{64F69761-246C-4605-B85F-5F8B8050DBE6} = {64F69761-246C-4605-B85F-5F8B8050DBE6}
+		{E8DFA628-0FE5-481C-93D2-649CDCC8F76D} = {E8DFA628-0FE5-481C-93D2-649CDCC8F76D}
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "PublishFiles", "PublishFiles", "{00D86DAF-C892-4D06-8311-7D6B96A512AD}"
+	ProjectSection(SolutionItems) = preProject
+		Installers\PublishFiles\wonky.crt = Installers\PublishFiles\wonky.crt
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -74,6 +97,10 @@ Global
 		{4A11AE63-1497-45A3-93B3-1CEB00C2944D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{4A11AE63-1497-45A3-93B3-1CEB00C2944D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{4A11AE63-1497-45A3-93B3-1CEB00C2944D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{ABD873B0-B368-4288-BBD8-07AAC13658A0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{ABD873B0-B368-4288-BBD8-07AAC13658A0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{ABD873B0-B368-4288-BBD8-07AAC13658A0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{ABD873B0-B368-4288-BBD8-07AAC13658A0}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -83,6 +110,8 @@ Global
 		{20CC6639-1C21-44BF-9381-8FAA4087053C} = {ECB156EB-21C1-478B-9419-4F3EB046809E}
 		{B15FE8EB-2792-4A17-9EE9-5A5715E1B31B} = {9F60F645-B6D1-437B-9A4A-B03871E672B1}
 		{C4CA04E2-F5FC-4EB7-811D-A3D7C9599424} = {9F60F645-B6D1-437B-9A4A-B03871E672B1}
+		{ABD873B0-B368-4288-BBD8-07AAC13658A0} = {9F60F645-B6D1-437B-9A4A-B03871E672B1}
+		{00D86DAF-C892-4D06-8311-7D6B96A512AD} = {ECB156EB-21C1-478B-9419-4F3EB046809E}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {A14EDD0F-A169-47D5-9232-4646899FFB2D}

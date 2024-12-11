@@ -5,10 +5,16 @@
 // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 // <@$&< copyright end >&$@>
 
+using AutoUpdaterDotNET;
 using PhotoCopyLibrary;
+using Spire.Pdf;
+using System.Diagnostics;
+using System.Drawing.Imaging;
 using System.Drawing.Printing;
+using System.Net;
 using System.Runtime.InteropServices;
 using System.Text;
+using TakeoutWranglerUI;
 
 namespace TakeoutWrangler;
 
@@ -30,6 +36,8 @@ public partial class MainForm : Form
     private static uint viewMessage;
     private static uint viewStatus;
     private static IntPtr myHandle;
+    private bool showNoUpdateAvailable;
+    private PleaseWait pleaseWait;
 
     private MainForm()
     {
@@ -46,6 +54,7 @@ public partial class MainForm : Form
         visibleItems = listBoxView.ClientSize.Height / listBoxView.ItemHeight;
         ResumeLayout(true);
 
+        AutoUpdater.CheckForUpdateEvent += UpdateCheckEvent;
         this.args = args;
     }
 
@@ -89,11 +98,7 @@ public partial class MainForm : Form
             if (!Enum.TryParse(actionString, true, out PhotoCopierActions behavior)) behavior = PhotoCopierActions.Copy;
             if (!Enum.TryParse(loggingString, true, out LoggingVerbosity logging)) logging = LoggingVerbosity.Verbose;
 
-            int result = photoCopier.Initialize(nameof(TakeoutWrangler), false, sourceDir, destinationDir, behavior, pattern, fileFilter, logging, listOnly);
-            if (result != (int)ReturnCode.Success)
-            {
-                photoCopier = null;
-            }
+            photoCopier.Initialize(nameof(TakeoutWrangler), false, sourceDir, destinationDir, behavior, pattern, fileFilter, logging, listOnly);
         }
         catch (Exception ex)
         {
@@ -166,7 +171,8 @@ public partial class MainForm : Form
             Pattern = pattern,
             Filter = fileFilter,
             Logging = logging,
-            ListOnly = listOnly
+            ListOnly = listOnly,
+            PhotoCopierSession = copier
         };
 
         DialogResult result = settingsForm.ShowDialog();
@@ -263,6 +269,15 @@ public partial class MainForm : Form
     {
         if (e.Graphics == null) return;
 
+        if (pleaseWait == null)
+        {
+            pleaseWait = new PleaseWait("Printing ...", this);
+            pleaseWait.Show();
+        }
+
+        pleaseWait.TopMost = true;
+        pleaseWait.BringToFront();
+
         // Sets the value of charactersOnPage to the number of characters
         // of stringToPrint that will fit within the bounds of the page.
         e.Graphics.MeasureString(stringToPrint, Font,
@@ -278,6 +293,15 @@ public partial class MainForm : Form
 
         // Check to see if more pages are to be printed.
         e.HasMorePages = (stringToPrint.Length > 0);
+        if (!e.HasMorePages)
+        {
+            // done printing
+            if (pleaseWait != null)
+            {
+                pleaseWait.Close();
+                pleaseWait = null;
+            }
+        }
     }
 
     private void toolStripMenuItemPrint_Click(object sender, EventArgs e)
@@ -292,14 +316,14 @@ public partial class MainForm : Form
 
             stringToPrint = sb.ToString();
 
-            if (DialogResult.OK == printDialog.ShowDialog())
+            if (DialogResult.OK == printDialog.ShowDialog(this))
             {
                 printDocument.Print();
             }
         }
         catch (Exception ex)
         {
-            var foo = ex;
+            var exception = ex;
         }
     }
 
@@ -325,5 +349,129 @@ public partial class MainForm : Form
             buttonRun.Tag = true;
             buttonRun.Text = Constants.Cancel;
         }
+    }
+
+    private void UpdateCheckEvent(UpdateInfoEventArgs args)
+    {
+        if (args.Error == null)
+        {
+            if (args.IsUpdateAvailable)
+            {
+                // Uncomment the following line if you want to show standard update dialog instead.
+                AutoUpdater.ShowUpdateForm(args);
+            }
+            else if (showNoUpdateAvailable)
+            {
+                MessageBox.Show(
+                    "No update available please try again later.", "Updates",
+                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+        }
+        else
+        {
+            if (args.Error is WebException)
+            {
+                MessageBox.Show(
+                    "There is a problem reaching update server. Please check your internet connection and try again later.",
+                    "Update Check Failed",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+            }
+            else
+            {
+#if DEBUG
+                if (Debugger.IsAttached) Debugger.Break();
+#endif
+                MessageBox.Show(args.Error.Message,
+                    args.Error.GetType().ToString(), MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+            }
+        }
+
+        showNoUpdateAvailable = true;
+    }
+
+    private void toolStripSaveConsole_Click(object sender, EventArgs e)
+    {
+        SaveFileDialog saveFileDialog = new SaveFileDialog() { Filter = "Text Files|*.txt", Title = "Save Console Output" };
+
+        DialogResult dr = saveFileDialog.ShowDialog();
+        if (dr == DialogResult.OK)
+        {
+            string filename = saveFileDialog.FileName;
+
+            FileStreamOptions fileStreamOptions = new FileStreamOptions { Access = FileAccess.Write, Mode = FileMode.Create };
+            using (TextWriter tw = new StreamWriter(filename, fileStreamOptions))
+            {
+                foreach (object item in listBoxView.Items)
+                {
+                    tw.WriteLine(item.ToString());
+                }
+            }
+        }
+    }
+
+    private void OpenUrl(string url)
+    {
+        Process.Start(new ProcessStartInfo
+        {
+            FileName = url,
+            UseShellExecute = true
+        });
+    }
+
+    private void listBoxView_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.KeyCode == Keys.C && e.Control)
+        {
+            StringBuilder sb = new StringBuilder();
+            foreach (object item in listBoxView.SelectedItems)
+            {
+                sb.AppendLine(item?.ToString() ?? string.Empty);
+            }
+            Clipboard.SetText(sb.ToString());
+        }
+        else if (e.KeyCode == Keys.A && e.Control)
+        {
+            foreach (int index in Enumerable.Range(0, listBoxView.Items.Count))
+            {
+                listBoxView.SetSelected(index, true);
+            }
+        }
+    }
+
+    private void toolStripMenuTakeout_Click(object sender, EventArgs e)
+    {
+        OpenUrl("https://takeout.google.com/");
+    }
+
+    private void howToUseGoogleTakeoutToolStripMenuItem_Click(object sender, EventArgs e)
+    {
+        string appDir = AppHelpers.GetApplicationDir();
+        if (appDir == null) return;
+
+        HelpViewer viewer = new HelpViewer();
+        viewer.Initialize(appDir, "How to get your photos from Google Takeout", "HowToGetYourPhotosFromGoogleTakeout.pdf");
+        viewer.ShowDialog();
+    }
+
+    private void helpToolStripMenuItemHelp_Click(object sender, EventArgs e)
+    {
+        string appDir = AppHelpers.GetApplicationDir();
+        if (appDir == null) return;
+
+        HelpViewer viewer = new HelpViewer();
+        viewer.Initialize(appDir, "TakeoutWrangler help", "Help.pdf");
+        viewer.ShowDialog();
+    }
+
+    private void aboutToolStripMenuItem_Click(object sender, EventArgs e)
+    {
+        string appDir = AppHelpers.GetApplicationDir();
+        if (appDir == null) return;
+
+        HelpViewer viewer = new HelpViewer();
+        viewer.Initialize(appDir, "About TakeoutWrangler", "About.pdf");
+        viewer.ShowDialog();
     }
 }

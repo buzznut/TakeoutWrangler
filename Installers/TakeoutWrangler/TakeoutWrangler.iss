@@ -2,9 +2,9 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 
 #define MyAppPublisher "Stewart A. Nutter"
-#define MyAppName "TOWranglerUI"
+#define MyAppName "TakeoutWranglerUI"
 #define MyAppExeName MyAppName + ".exe"
-#define MySourceDir "C:\Users\sanut\OneDrive\GitCode\PhotoCopy\PhotoExtract\bin\Release\net8.0-windows\"
+#define MySourceDir "C:\Users\sanut\OneDrive\GitCode\PhotoCopy\TakeoutWranglerUI\bin\Release\net8.0-windows\"
 #define MySourceExe MySourceDir + "\" + MyAppExeName
 #define MyAppVersion GetVersionNumbersString(MySourceExe)
 #define MyIcon "C:\Users\sanut\OneDrive\GitCode\PhotoCopy\Documentation\photos.ico"

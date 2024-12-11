@@ -10,7 +10,7 @@
     <OutputType>Exe</OutputType>
     <TargetFramework>net8.0-windows</TargetFramework>
     <Nullable>warnings</Nullable>
-    <StartupObject>TOWranglerCmdline.Program</StartupObject>
+    <StartupObject>TakeoutWranglerCmdline.Program</StartupObject>
     <ApplicationIcon>photos.ico</ApplicationIcon>
   </PropertyGroup>
 

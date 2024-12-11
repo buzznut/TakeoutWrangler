@@ -39,12 +39,20 @@ namespace TakeoutWrangler
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(MainForm));
             menuStripMainMenu = new MenuStrip();
             fileToolStripMenuItem = new ToolStripMenuItem();
+            toolStripMenuTakeout = new ToolStripMenuItem();
+            toolStripSeparator2 = new ToolStripSeparator();
             clearToolStripMenuItem = new ToolStripMenuItem();
             toolStripMenuItemPrint = new ToolStripMenuItem();
+            toolStripSaveConsole = new ToolStripMenuItem();
             toolStripSeparator1 = new ToolStripSeparator();
             exitToolStripMenuItem = new ToolStripMenuItem();
             viewToolStripMenuItem = new ToolStripMenuItem();
             settingsToolStripMenuItem = new ToolStripMenuItem();
+            helpToolStripMenuItem = new ToolStripMenuItem();
+            helpToolStripMenuItemHelp = new ToolStripMenuItem();
+            howToUseGoogleTakeoutToolStripMenuItem = new ToolStripMenuItem();
+            toolStripSeparator3 = new ToolStripSeparator();
+            aboutToolStripMenuItem = new ToolStripMenuItem();
             listBoxView = new ListBox();
             timerView = new System.Windows.Forms.Timer(components);
             buttonRun = new Button();
@@ -58,7 +66,7 @@ namespace TakeoutWrangler
             // 
             // menuStripMainMenu
             // 
-            menuStripMainMenu.Items.AddRange(new ToolStripItem[] { fileToolStripMenuItem, viewToolStripMenuItem });
+            menuStripMainMenu.Items.AddRange(new ToolStripItem[] { fileToolStripMenuItem, viewToolStripMenuItem, helpToolStripMenuItem });
             menuStripMainMenu.Location = new Point(0, 0);
             menuStripMainMenu.Name = "menuStripMainMenu";
             menuStripMainMenu.Size = new Size(642, 24);
@@ -67,34 +75,53 @@ namespace TakeoutWrangler
             // 
             // fileToolStripMenuItem
             // 
-            fileToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { clearToolStripMenuItem, toolStripMenuItemPrint, toolStripSeparator1, exitToolStripMenuItem });
+            fileToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { toolStripMenuTakeout, toolStripSeparator2, clearToolStripMenuItem, toolStripMenuItemPrint, toolStripSaveConsole, toolStripSeparator1, exitToolStripMenuItem });
             fileToolStripMenuItem.Name = "fileToolStripMenuItem";
             fileToolStripMenuItem.Size = new Size(37, 20);
             fileToolStripMenuItem.Text = "File";
             // 
+            // toolStripMenuTakeout
+            // 
+            toolStripMenuTakeout.Name = "toolStripMenuTakeout";
+            toolStripMenuTakeout.Size = new Size(201, 22);
+            toolStripMenuTakeout.Text = "Google Takeout...";
+            toolStripMenuTakeout.Click += toolStripMenuTakeout_Click;
+            // 
+            // toolStripSeparator2
+            // 
+            toolStripSeparator2.Name = "toolStripSeparator2";
+            toolStripSeparator2.Size = new Size(198, 6);
+            // 
             // clearToolStripMenuItem
             // 
             clearToolStripMenuItem.Name = "clearToolStripMenuItem";
-            clearToolStripMenuItem.Size = new Size(152, 22);
+            clearToolStripMenuItem.Size = new Size(201, 22);
             clearToolStripMenuItem.Text = "Clear console";
             clearToolStripMenuItem.Click += clearToolStripMenuItem_Click;
             // 
             // toolStripMenuItemPrint
             // 
             toolStripMenuItemPrint.Name = "toolStripMenuItemPrint";
-            toolStripMenuItemPrint.Size = new Size(152, 22);
-            toolStripMenuItemPrint.Text = "Print console...";
+            toolStripMenuItemPrint.Size = new Size(201, 22);
+            toolStripMenuItemPrint.Text = "Print console contents...";
             toolStripMenuItemPrint.Click += toolStripMenuItemPrint_Click;
+            // 
+            // toolStripSaveConsole
+            // 
+            toolStripSaveConsole.Name = "toolStripSaveConsole";
+            toolStripSaveConsole.Size = new Size(201, 22);
+            toolStripSaveConsole.Text = "Save console contents...";
+            toolStripSaveConsole.Click += toolStripSaveConsole_Click;
             // 
             // toolStripSeparator1
             // 
             toolStripSeparator1.Name = "toolStripSeparator1";
-            toolStripSeparator1.Size = new Size(149, 6);
+            toolStripSeparator1.Size = new Size(198, 6);
             // 
             // exitToolStripMenuItem
             // 
             exitToolStripMenuItem.Name = "exitToolStripMenuItem";
-            exitToolStripMenuItem.Size = new Size(152, 22);
+            exitToolStripMenuItem.Size = new Size(201, 22);
             exitToolStripMenuItem.Text = "Exit";
             exitToolStripMenuItem.Click += exitToolStripMenuItem_Click;
             // 
@@ -112,6 +139,39 @@ namespace TakeoutWrangler
             settingsToolStripMenuItem.Text = "Settings...";
             settingsToolStripMenuItem.Click += settingsToolStripMenuItem_Click;
             // 
+            // helpToolStripMenuItem
+            // 
+            helpToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { helpToolStripMenuItemHelp, howToUseGoogleTakeoutToolStripMenuItem, toolStripSeparator3, aboutToolStripMenuItem });
+            helpToolStripMenuItem.Name = "helpToolStripMenuItem";
+            helpToolStripMenuItem.Size = new Size(44, 20);
+            helpToolStripMenuItem.Text = "Help";
+            // 
+            // helpToolStripMenuItemHelp
+            // 
+            helpToolStripMenuItemHelp.Name = "helpToolStripMenuItemHelp";
+            helpToolStripMenuItemHelp.Size = new Size(229, 22);
+            helpToolStripMenuItemHelp.Text = "Help...";
+            helpToolStripMenuItemHelp.Click += helpToolStripMenuItemHelp_Click;
+            // 
+            // howToUseGoogleTakeoutToolStripMenuItem
+            // 
+            howToUseGoogleTakeoutToolStripMenuItem.Name = "howToUseGoogleTakeoutToolStripMenuItem";
+            howToUseGoogleTakeoutToolStripMenuItem.Size = new Size(229, 22);
+            howToUseGoogleTakeoutToolStripMenuItem.Text = "How to use Google Takeout...";
+            howToUseGoogleTakeoutToolStripMenuItem.Click += howToUseGoogleTakeoutToolStripMenuItem_Click;
+            // 
+            // toolStripSeparator3
+            // 
+            toolStripSeparator3.Name = "toolStripSeparator3";
+            toolStripSeparator3.Size = new Size(226, 6);
+            // 
+            // aboutToolStripMenuItem
+            // 
+            aboutToolStripMenuItem.Name = "aboutToolStripMenuItem";
+            aboutToolStripMenuItem.Size = new Size(229, 22);
+            aboutToolStripMenuItem.Text = "About...";
+            aboutToolStripMenuItem.Click += aboutToolStripMenuItem_Click;
+            // 
             // listBoxView
             // 
             listBoxView.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
@@ -125,6 +185,7 @@ namespace TakeoutWrangler
             listBoxView.Size = new Size(632, 284);
             listBoxView.TabIndex = 1;
             listBoxView.SizeChanged += listBoxView_SizeChanged;
+            listBoxView.KeyDown += listBoxView_KeyDown;
             // 
             // timerView
             // 
@@ -154,11 +215,13 @@ namespace TakeoutWrangler
             // textBoxStatus
             // 
             textBoxStatus.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
+            textBoxStatus.BorderStyle = BorderStyle.FixedSingle;
             textBoxStatus.Location = new Point(69, 322);
             textBoxStatus.Name = "textBoxStatus";
             textBoxStatus.ReadOnly = true;
-            textBoxStatus.Size = new Size(148, 23);
+            textBoxStatus.Size = new Size(101, 23);
             textBoxStatus.TabIndex = 3;
+            textBoxStatus.TextAlign = HorizontalAlignment.Center;
             // 
             // labelProgress
             // 
@@ -216,5 +279,13 @@ namespace TakeoutWrangler
         private TextBox textBoxStatus;
         private Label labelProgress;
         private System.Windows.Forms.Timer timerIsRunning;
+        private ToolStripMenuItem toolStripSaveConsole;
+        private ToolStripMenuItem toolStripMenuTakeout;
+        private ToolStripSeparator toolStripSeparator2;
+        private ToolStripMenuItem helpToolStripMenuItem;
+        private ToolStripMenuItem helpToolStripMenuItemHelp;
+        private ToolStripMenuItem howToUseGoogleTakeoutToolStripMenuItem;
+        private ToolStripSeparator toolStripSeparator3;
+        private ToolStripMenuItem aboutToolStripMenuItem;
     }
 }

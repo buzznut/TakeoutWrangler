@@ -47,20 +47,20 @@ namespace TakeoutWrangler
             textBoxFileFilter = new TextBox();
             textBoxSource = new TextBox();
             groupBoxDestination = new GroupBox();
+            textBoxMediaFolderDescription = new TextBox();
             textBoxDestinationPattern = new TextBox();
-            labelDestinationFolderNamePatternDescription = new Label();
             labelDestinationRootFolderDescription = new Label();
             buttonDestinationDialog = new Button();
             textBoxDestination = new TextBox();
             groupBoxAction = new GroupBox();
+            textBoxActionDescription = new TextBox();
+            checkBoxList = new CheckBox();
             comboBoxVerbosity = new ComboBox();
             labelVerbosity = new Label();
             labelActions = new Label();
             comboBoxActions = new ComboBox();
             buttonCancel = new Button();
             buttonOkay = new Button();
-            checkBoxList = new CheckBox();
-            textBoxActionDescription = new TextBox();
             groupBoxSource.SuspendLayout();
             groupBoxDestination.SuspendLayout();
             groupBoxAction.SuspendLayout();
@@ -78,7 +78,7 @@ namespace TakeoutWrangler
             // labelDestination
             // 
             labelDestination.AutoSize = true;
-            labelDestination.Location = new Point(85, 39);
+            labelDestination.Location = new Point(14, 39);
             labelDestination.Name = "labelDestination";
             labelDestination.Size = new Size(77, 15);
             labelDestination.TabIndex = 1;
@@ -133,7 +133,7 @@ namespace TakeoutWrangler
             // buttonSourceDialog
             // 
             buttonSourceDialog.Anchor = AnchorStyles.Top | AnchorStyles.Right;
-            buttonSourceDialog.Location = new Point(589, 38);
+            buttonSourceDialog.Location = new Point(647, 38);
             buttonSourceDialog.Name = "buttonSourceDialog";
             buttonSourceDialog.Size = new Size(27, 23);
             buttonSourceDialog.TabIndex = 3;
@@ -162,27 +162,39 @@ namespace TakeoutWrangler
             // textBoxSource
             // 
             textBoxSource.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
-            textBoxSource.Location = new Point(79, 38);
+            textBoxSource.Location = new Point(78, 38);
             textBoxSource.Name = "textBoxSource";
-            textBoxSource.Size = new Size(504, 23);
+            textBoxSource.Size = new Size(563, 23);
             textBoxSource.TabIndex = 2;
             // 
             // groupBoxDestination
             // 
             groupBoxDestination.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+            groupBoxDestination.Controls.Add(textBoxMediaFolderDescription);
             groupBoxDestination.Controls.Add(textBoxDestinationPattern);
-            groupBoxDestination.Controls.Add(labelDestinationFolderNamePatternDescription);
             groupBoxDestination.Controls.Add(labelDestinationRootFolderDescription);
             groupBoxDestination.Controls.Add(buttonDestinationDialog);
             groupBoxDestination.Controls.Add(labelDestination);
             groupBoxDestination.Controls.Add(textBoxDestination);
             groupBoxDestination.Controls.Add(labelPattern);
-            groupBoxDestination.Location = new Point(12, 249);
+            groupBoxDestination.Location = new Point(12, 271);
             groupBoxDestination.Name = "groupBoxDestination";
             groupBoxDestination.Size = new Size(680, 133);
             groupBoxDestination.TabIndex = 2;
             groupBoxDestination.TabStop = false;
             groupBoxDestination.Text = "Target";
+            // 
+            // textBoxMediaFolderDescription
+            // 
+            textBoxMediaFolderDescription.BorderStyle = BorderStyle.None;
+            textBoxMediaFolderDescription.Font = new Font("Segoe UI", 9F, FontStyle.Italic);
+            textBoxMediaFolderDescription.Location = new Point(173, 72);
+            textBoxMediaFolderDescription.Name = "textBoxMediaFolderDescription";
+            textBoxMediaFolderDescription.ReadOnly = true;
+            textBoxMediaFolderDescription.Size = new Size(485, 16);
+            textBoxMediaFolderDescription.TabIndex = 7;
+            textBoxMediaFolderDescription.TabStop = false;
+            textBoxMediaFolderDescription.Text = " Use: text, $y=year, $m=month, $d=day, $h=hour (media date).  example:  $y_$m";
             // 
             // textBoxDestinationPattern
             // 
@@ -192,21 +204,11 @@ namespace TakeoutWrangler
             textBoxDestinationPattern.Size = new Size(298, 23);
             textBoxDestinationPattern.TabIndex = 6;
             // 
-            // labelDestinationFolderNamePatternDescription
-            // 
-            labelDestinationFolderNamePatternDescription.AutoSize = true;
-            labelDestinationFolderNamePatternDescription.Font = new Font("Segoe UI", 9F, FontStyle.Italic);
-            labelDestinationFolderNamePatternDescription.Location = new Point(170, 73);
-            labelDestinationFolderNamePatternDescription.Name = "labelDestinationFolderNamePatternDescription";
-            labelDestinationFolderNamePatternDescription.Size = new Size(384, 15);
-            labelDestinationFolderNamePatternDescription.TabIndex = 4;
-            labelDestinationFolderNamePatternDescription.Text = " Use: text, $y=year, $m=month, $d=day, $h=hour (media date).  '$y_$m'";
-            // 
             // labelDestinationRootFolderDescription
             // 
             labelDestinationRootFolderDescription.AutoSize = true;
             labelDestinationRootFolderDescription.Font = new Font("Segoe UI", 9F, FontStyle.Italic);
-            labelDestinationRootFolderDescription.Location = new Point(170, 19);
+            labelDestinationRootFolderDescription.Location = new Point(96, 19);
             labelDestinationRootFolderDescription.Name = "labelDestinationRootFolderDescription";
             labelDestinationRootFolderDescription.Size = new Size(221, 15);
             labelDestinationRootFolderDescription.TabIndex = 0;
@@ -226,9 +228,9 @@ namespace TakeoutWrangler
             // textBoxDestination
             // 
             textBoxDestination.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
-            textBoxDestination.Location = new Point(170, 36);
+            textBoxDestination.Location = new Point(96, 36);
             textBoxDestination.Name = "textBoxDestination";
-            textBoxDestination.Size = new Size(471, 23);
+            textBoxDestination.Size = new Size(545, 23);
             textBoxDestination.TabIndex = 2;
             // 
             // groupBoxAction
@@ -242,10 +244,34 @@ namespace TakeoutWrangler
             groupBoxAction.Controls.Add(comboBoxActions);
             groupBoxAction.Location = new Point(12, 134);
             groupBoxAction.Name = "groupBoxAction";
-            groupBoxAction.Size = new Size(680, 106);
+            groupBoxAction.Size = new Size(680, 131);
             groupBoxAction.TabIndex = 1;
             groupBoxAction.TabStop = false;
             groupBoxAction.Text = "Actions";
+            // 
+            // textBoxActionDescription
+            // 
+            textBoxActionDescription.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+            textBoxActionDescription.BorderStyle = BorderStyle.None;
+            textBoxActionDescription.Font = new Font("Segoe UI", 9F, FontStyle.Italic);
+            textBoxActionDescription.Location = new Point(84, 77);
+            textBoxActionDescription.Multiline = true;
+            textBoxActionDescription.Name = "textBoxActionDescription";
+            textBoxActionDescription.Size = new Size(587, 44);
+            textBoxActionDescription.TabIndex = 5;
+            textBoxActionDescription.Text = "(action description)";
+            // 
+            // checkBoxList
+            // 
+            checkBoxList.AutoSize = true;
+            checkBoxList.Checked = true;
+            checkBoxList.CheckState = CheckState.Checked;
+            checkBoxList.Location = new Point(82, 22);
+            checkBoxList.Name = "checkBoxList";
+            checkBoxList.Size = new Size(174, 19);
+            checkBoxList.TabIndex = 4;
+            checkBoxList.Text = "List only - make no changes";
+            checkBoxList.UseVisualStyleBackColor = true;
             // 
             // comboBoxVerbosity
             // 
@@ -288,7 +314,7 @@ namespace TakeoutWrangler
             // 
             buttonCancel.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
             buttonCancel.DialogResult = DialogResult.Cancel;
-            buttonCancel.Location = new Point(617, 389);
+            buttonCancel.Location = new Point(617, 412);
             buttonCancel.Name = "buttonCancel";
             buttonCancel.Size = new Size(75, 23);
             buttonCancel.TabIndex = 4;
@@ -299,7 +325,7 @@ namespace TakeoutWrangler
             // 
             buttonOkay.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
             buttonOkay.DialogResult = DialogResult.OK;
-            buttonOkay.Location = new Point(536, 389);
+            buttonOkay.Location = new Point(536, 412);
             buttonOkay.Name = "buttonOkay";
             buttonOkay.Size = new Size(75, 23);
             buttonOkay.TabIndex = 3;
@@ -307,36 +333,13 @@ namespace TakeoutWrangler
             buttonOkay.UseVisualStyleBackColor = true;
             buttonOkay.Click += buttonOkay_Click;
             // 
-            // checkBoxList
-            // 
-            checkBoxList.AutoSize = true;
-            checkBoxList.Checked = true;
-            checkBoxList.CheckState = CheckState.Checked;
-            checkBoxList.Location = new Point(82, 22);
-            checkBoxList.Name = "checkBoxList";
-            checkBoxList.Size = new Size(174, 19);
-            checkBoxList.TabIndex = 4;
-            checkBoxList.Text = "List only - make no changes";
-            checkBoxList.UseVisualStyleBackColor = true;
-            // 
-            // textBoxActionDescription
-            // 
-            textBoxActionDescription.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
-            textBoxActionDescription.BorderStyle = BorderStyle.None;
-            textBoxActionDescription.Font = new Font("Segoe UI", 9F, FontStyle.Italic);
-            textBoxActionDescription.Location = new Point(84, 77);
-            textBoxActionDescription.Name = "textBoxActionDescription";
-            textBoxActionDescription.Size = new Size(587, 16);
-            textBoxActionDescription.TabIndex = 5;
-            textBoxActionDescription.Text = "(action description)";
-            // 
             // SettingsForm
             // 
             AcceptButton = buttonOkay;
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
             CancelButton = buttonCancel;
-            ClientSize = new Size(704, 418);
+            ClientSize = new Size(704, 441);
             Controls.Add(buttonOkay);
             Controls.Add(buttonCancel);
             Controls.Add(groupBoxAction);
@@ -345,7 +348,7 @@ namespace TakeoutWrangler
             Icon = (Icon)resources.GetObject("$this.Icon");
             MaximizeBox = false;
             MinimizeBox = false;
-            MinimumSize = new Size(720, 420);
+            MinimumSize = new Size(720, 480);
             Name = "SettingsForm";
             Text = "Takeout Wrangler Settings";
             Load += SettingsForm_Load;
@@ -374,7 +377,6 @@ namespace TakeoutWrangler
         private Button buttonDestinationDialog;
         private TextBox textBoxDestination;
         private TextBox textBoxDestinationPattern;
-        private Label labelDestinationFolderNamePatternDescription;
         private Label labelDestinationRootFolderDescription;
         private GroupBox groupBoxAction;
         private Button buttonCancel;
@@ -385,5 +387,6 @@ namespace TakeoutWrangler
         private Label labelVerbosity;
         private TextBox textBoxActionDescription;
         private CheckBox checkBoxList;
+        private TextBox textBoxMediaFolderDescription;
     }
 }
