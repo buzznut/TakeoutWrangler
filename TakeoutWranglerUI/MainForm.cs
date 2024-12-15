@@ -8,8 +8,8 @@
 using AutoUpdaterDotNET;
 using PhotoCopyLibrary;
 using Spire.Pdf;
+using System.ComponentModel;
 using System.Diagnostics;
-using System.Drawing.Imaging;
 using System.Drawing.Printing;
 using System.Net;
 using System.Runtime.InteropServices;
@@ -38,6 +38,16 @@ public partial class MainForm : Form
     private static IntPtr myHandle;
     private bool showNoUpdateAvailable;
     private PleaseWait pleaseWait;
+    private readonly string[] helpFiles = { "Help.pdf", "About.pdf", "HowToGetYourPhotosFromGoogleTakeout.pdf" };
+    private readonly Dictionary<string, Stream[]> helpStreams = new Dictionary<string, Stream[]>(StringComparer.OrdinalIgnoreCase)
+    {
+        { "Help.pdf", null },
+        { "About.pdf", null },
+        { "HowToGetYourPhotosFromGoogleTakeout.pdf", null }
+    };
+    private BackgroundWorker worker;
+    private string appDir = AppHelpers.GetApplicationDir();
+    private bool pagesLoaded;
 
     private MainForm()
     {
@@ -54,8 +64,91 @@ public partial class MainForm : Form
         visibleItems = listBoxView.ClientSize.Height / listBoxView.ItemHeight;
         ResumeLayout(true);
 
+        worker = new BackgroundWorker
+        {
+            WorkerSupportsCancellation = true,
+            WorkerReportsProgress = true
+        };
+
+        worker.DoWork += ResolveNextImage;
+        worker.RunWorkerCompleted += ResolveNextImageCompleted;
+
+        StartPageResolve(0);
+
         AutoUpdater.CheckForUpdateEvent += UpdateCheckEvent;
         this.args = args;
+    }
+
+    private void StartPageResolve(int index)
+    {
+        if (index < 0 || index >= helpFiles.Length) return;
+
+        PageLoadData data = new PageLoadData
+        {
+            PdfFileName = helpFiles[index],
+            Index = index
+        };
+
+        worker.RunWorkerAsync(data);
+    }
+
+    private void ResolveNextImageCompleted(object sender, RunWorkerCompletedEventArgs e)
+    {
+        BackgroundWorker bw = sender as BackgroundWorker;
+        if (bw == null) return;
+
+        PageLoadData data = e.Result as PageLoadData;
+        if (data == null) return;
+
+        if (e.Cancelled)
+        {
+            MessageBox.Show("Operation was canceled");
+        }
+        else if (e.Error != null)
+        {
+            MessageBox.Show(e.Error.Message);
+        }
+        else
+        {
+            helpStreams[data.PdfFileName] = data.Pages;
+            data.Pages = null;
+        }
+
+        if (data.Index + 1 < helpFiles.Length)
+        {
+            StartPageResolve(data.Index + 1);
+        }
+        else
+        {
+            pagesLoaded = true;
+        }
+    }
+
+    private void ResolveNextImage(object sender, DoWorkEventArgs e)
+    {
+        if (appDir == null) return;
+
+        BackgroundWorker bw = sender as BackgroundWorker;
+        if (bw == null) return;
+
+        PageLoadData data = e.Argument as PageLoadData;
+        if (data == null) return;
+
+        string pdfFile = Path.Combine(appDir, "ResourceFiles", data.PdfFileName);
+        using (PdfDocument doc = new PdfDocument(pdfFile))
+        {
+            data.Pages = new Stream[doc.Pages.Count];
+
+            for (int page = 0; page < doc.Pages.Count; page++)
+            {
+                bw.ReportProgress(Convert.ToInt32((double)(page + 1) / doc.Pages.Count) * 100);
+                FileStream tmpStream = new FileStream(Path.GetTempFileName(), FileMode.Open, FileAccess.ReadWrite, FileShare.None, 4096, FileOptions.DeleteOnClose);
+                doc.SaveToImageStream(page, tmpStream, "bitmap");
+                data.Pages[page] = tmpStream;
+            }
+        }
+
+        e.Result = data;
     }
 
     protected override void WndProc(ref Message m)
@@ -79,7 +172,7 @@ public partial class MainForm : Form
 
     private PhotoCopier HandleConfiguration(string[] args)
     {
-        PhotoCopier photoCopier = new PhotoCopier(OutputHandler, StatusHandler);
+        PhotoCopier photoCopier = new PhotoCopier(OutputHandler, StatusHandler) { UseParallel = true };
         configs = photoCopier.GetConfiguration();
 
         try
@@ -193,7 +286,7 @@ public partial class MainForm : Form
             listOnly = settingsForm.ListOnly;
 
             listBoxView.Items.Clear();
-            PhotoCopier photoCopier = new PhotoCopier(OutputHandler, StatusHandler);
+            PhotoCopier photoCopier = new PhotoCopier(OutputHandler, StatusHandler) { UseParallel = true };
 
             configs.SetString("action", behavior.ToString());
             configs.SetString("source", source);
@@ -447,31 +540,45 @@ public partial class MainForm : Form
 
     private void howToUseGoogleTakeoutToolStripMenuItem_Click(object sender, EventArgs e)
     {
-        string appDir = AppHelpers.GetApplicationDir();
         if (appDir == null) return;
 
         HelpViewer viewer = new HelpViewer();
-        viewer.Initialize(appDir, "How to get your photos from Google Takeout", "HowToGetYourPhotosFromGoogleTakeout.pdf");
+        if (pagesLoaded)
+            viewer.Initialize("How to get your photos from Google Takeout", helpStreams["HowToGetYourPhotosFromGoogleTakeout.pdf"]);
+        else
+            viewer.Initialize(appDir, "How to get your photos from Google Takeout", "HowToGetYourPhotosFromGoogleTakeout.pdf");
+
         viewer.ShowDialog();
     }
 
     private void helpToolStripMenuItemHelp_Click(object sender, EventArgs e)
     {
-        string appDir = AppHelpers.GetApplicationDir();
         if (appDir == null) return;
 
         HelpViewer viewer = new HelpViewer();
-        viewer.Initialize(appDir, "TakeoutWrangler help", "Help.pdf");
+        if (pagesLoaded)
+            viewer.Initialize("How to get your photos from Google Takeout", helpStreams["Help.pdf"]);
+        else
+            viewer.Initialize(appDir, "TakeoutWrangler help", "Help.pdf");
         viewer.ShowDialog();
     }
 
     private void aboutToolStripMenuItem_Click(object sender, EventArgs e)
     {
-        string appDir = AppHelpers.GetApplicationDir();
         if (appDir == null) return;
 
         HelpViewer viewer = new HelpViewer();
-        viewer.Initialize(appDir, "About TakeoutWrangler", "About.pdf");
+        if (pagesLoaded)
+            viewer.Initialize("How to get your photos from Google Takeout", helpStreams["About.pdf"]);
+        else
+            viewer.Initialize(appDir, "About TakeoutWrangler", "About.pdf");
         viewer.ShowDialog();
     }
+}
+
+public class PageLoadData
+{
+    public string PdfFileName { get; set; }
+    public Stream[] Pages { get; set; }
+    public int Index { get; set; }
 }

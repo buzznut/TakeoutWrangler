@@ -1,7 +1,5 @@
-﻿using PhotoCopyLibrary;
-using Spire.Pdf;
+﻿using Spire.Pdf;
 using System.ComponentModel;
-using System.Reflection;
 
 namespace TakeoutWranglerUI;
 
@@ -9,20 +7,21 @@ public partial class HelpViewer : Form
 {
     private int currentPage;
     private int totalPages;
-    private Dictionary<int, Image> images = new Dictionary<int, Image>();
-    private PdfDocument doc = new PdfDocument();
+    private Stream[] pages;
+    private readonly PdfDocument doc = new PdfDocument();
     private BackgroundWorker worker = new BackgroundWorker();
-    private Image wait;
+    private readonly List<IDisposable> disposables = new List<IDisposable>();
 
     public HelpViewer()
     {
         InitializeComponent();
+        disposables.Add(worker);
+        disposables.Add(doc);
     }
 
     private void buttonEnd_Click(object sender, EventArgs e)
     {
         currentPage = totalPages - 1;
-
         EnableButtons();
         DrawPage();
     }
@@ -30,7 +29,6 @@ public partial class HelpViewer : Form
     private void buttonRight_Click(object sender, EventArgs e)
     {
         currentPage = Math.Min(currentPage + 1, totalPages - 1);
-
         EnableButtons();
         DrawPage();
     }
@@ -38,7 +36,6 @@ public partial class HelpViewer : Form
     private void buttonLeft_Click(object sender, EventArgs e)
     {
         currentPage = Math.Max(currentPage - 1, 0);
-
         EnableButtons();
         DrawPage();
     }
@@ -46,13 +43,27 @@ public partial class HelpViewer : Form
     private void buttonBegin_Click(object sender, EventArgs e)
     {
         currentPage = 0;
-
         EnableButtons();
         DrawPage();
     }
 
+    internal void Initialize(string title, Stream[] pages)
+    {
+        // all the pages are already loaded
+        SuspendLayout();
+
+        Text = title;
+        this.pages = pages;
+        totalPages = pages.Length;
+        currentPage = 0;
+        DrawPage();
+
+        ResumeLayout(true);
+    }
+
     internal void Initialize(string appDir, string title, string pdfName)
     {
+        // must load pages from PDF in the background
         SuspendLayout();
 
         InitializeBackgroundWorker();
@@ -67,11 +78,14 @@ public partial class HelpViewer : Form
             Text = title;
 
             totalPages = doc.Pages.Count;
+            pages = new Stream[totalPages];
+
             currentPage = 0;
 
             if (waitStream != null)
             {
                 pictureBoxView.Image = Image.FromStream(waitStream);
+                disposables.Add(waitStream);
             }
         }
 
@@ -91,9 +105,12 @@ public partial class HelpViewer : Form
 
     private void DrawPage()
     {
-        if (images.TryGetValue(currentPage, out Image image))
+        if (pages[currentPage] != null)
         {
-            pictureBoxView.Image = image;
+            pictureBoxView.Image?.Dispose();
+            pictureBoxView.Image = Bitmap.FromStream(pages[currentPage]);
+            disposables.Add(pictureBoxView.Image);
+
             pictureBoxView.Invalidate();
             splitContainerView.Panel1.VerticalScroll.Value = 0;
             return;
@@ -135,7 +152,10 @@ public partial class HelpViewer : Form
         ImageResolveData data = e.Argument as ImageResolveData;
         if (data == null) return;
 
-        data.Image = Bitmap.FromStream(data.Document.SaveAsImage(data.CurrentPage));
+        FileStream tmpStream = new FileStream(Path.GetTempFileName(), FileMode.Open, FileAccess.ReadWrite, FileShare.None, 4096, FileOptions.DeleteOnClose);
+        doc.SaveToImageStream(data.CurrentPage, tmpStream, "bitmap");
+        data.Image = tmpStream;
+
         e.Result = data;
     }
 
@@ -154,8 +174,11 @@ public partial class HelpViewer : Form
         }
         else
         {
-            images[data.CurrentPage] = data.Image;
-            pictureBoxView.Image = data.Image;
+            pages[data.CurrentPage] = data.Image;
+
+            pictureBoxView.Image?.Dispose();
+            pictureBoxView.Image = Bitmap.FromStream(pages[currentPage]);
+
             pictureBoxView.Invalidate();
             splitContainerView.Panel1.VerticalScroll.Value = 0;
         }
@@ -171,6 +194,6 @@ public partial class HelpViewer : Form
 public class ImageResolveData
 {
     public int CurrentPage { get; internal set; }
-    public Image Image { get; internal set; }
+    public Stream Image { get; internal set; }
     public PdfDocument Document { get; internal set; }
 }

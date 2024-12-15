@@ -20,10 +20,27 @@ namespace TakeoutWrangler
         /// <param name="disposing">true if managed resources should be disposed; otherwise, false.</param>
         protected override void Dispose(bool disposing)
         {
-            if (disposing && (components != null))
+            if (disposing)
             {
-                components.Dispose();
+                if ((components != null))
+                {
+                    components.Dispose();
+                }
+
+                foreach (Stream[] streams in helpStreams.Values)
+                {
+                    if (streams == null) continue;
+
+                    foreach (Stream stream in streams)
+                    {
+                        stream?.Dispose();
+                    }
+                }
+
+                helpStreams.Clear();
+                worker?.Dispose();
             }
+
             base.Dispose(disposing);
         }
 

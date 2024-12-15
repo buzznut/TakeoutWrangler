@@ -30,7 +30,7 @@ public delegate void HandleOutput(string output = null);
 
 public class PhotoCopier
 {
-    private readonly bool useParallel = false;
+    public bool UseParallel;
 
     private int canceled;
     private int zipFileCount;
@@ -557,7 +557,7 @@ public class PhotoCopier
         return false;
     }
 
-    private async Task  ProcessDirAsync(string src, string dst, string fileFilter)
+    private async Task ProcessDirAsync(string src, string dst, string fileFilter)
     {
         if (logging != LoggingVerbosity.Quiet) outputHandler($"Processing dir:{src}");
 
@@ -911,7 +911,7 @@ public class PhotoCopier
     {
         if (mediaKeys.IsEmpty) return;
 
-        if (useParallel)
+        if (UseParallel)
         {
             await Task.Run(() => Parallel.ForEach(mediaKeys.Keys, entryKey => ProcessEntry(null, entryKey, dst, count)));
         }
@@ -1041,7 +1041,7 @@ public class PhotoCopier
                 zipStream.Seek(0, SeekOrigin.Begin);
                 zipHash = SHA512.Create().ComputeHash(zipStream);
 
-                fileStream = File.Open(filePath, FileMode.Open, FileAccess.ReadWrite);
+                fileStream = new FileStream (filePath, FileMode.Open, FileAccess.ReadWrite, FileShare.None, 4096, true);
                 if (fileStream == null)
                 {
                     if (Debugger.IsAttached) Debugger.Break();
@@ -1083,7 +1083,7 @@ public class PhotoCopier
                         break;
                     }
 
-                    FileStream testStream = File.OpenRead(filePath);
+                    FileStream testStream = new FileStream(filePath, FileMode.Open, FileAccess.ReadWrite, FileShare.None, 4096, true);
                     streams.Add(testStream);
 
                     fileHash = SHA256.Create().ComputeHash(testStream);
@@ -1109,7 +1109,7 @@ public class PhotoCopier
                     string dir = Path.GetDirectoryName(filePath);
                     if (dir != null) System.IO.Directory.CreateDirectory(dir);
 
-                    fileStream = File.Open(filePath, FileMode.OpenOrCreate, FileAccess.ReadWrite);
+                    fileStream = new FileStream(filePath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None, 4096, true);
                     if (fileStream == null)
                     {
                         if (Debugger.IsAttached) Debugger.Break();
@@ -1126,7 +1126,7 @@ public class PhotoCopier
                 fileStream.Seek(0, SeekOrigin.Begin);
 
                 string verb = listOnly ? "Would copy" : "Copied";
-                if (logging != LoggingVerbosity.Quiet) outputHandler($"{Interlocked.Add(ref fileCount, 0)}/{count} {verb} file:\"{entry.Name}\" to \"{Path.Combine(".",targetDir, fname)}\"");
+                if (logging != LoggingVerbosity.Quiet) outputHandler($"{Interlocked.Add(ref fileCount, 0)}/{count} {verb} file:\"{entry.Name}\" to \"{Path.Combine(".", targetDir, fname)}\"");
                 statusHandler($"{Interlocked.Add(ref fileCount, 0)}/{count}");
 
                 if (exif == null)
@@ -1183,7 +1183,7 @@ public class PhotoCopier
     {
         if (length >= 1 * 1024 * 1024)
         {
-            return new FileStream(Path.GetTempFileName(), FileMode.Open, FileAccess.ReadWrite, FileShare.None, 8192, FileOptions.DeleteOnClose);
+            return new FileStream(Path.GetTempFileName(), FileMode.Open, FileAccess.ReadWrite, FileShare.None, 4096, FileOptions.DeleteOnClose);
         }
 
         return new MemoryStream(Convert.ToInt32(length));

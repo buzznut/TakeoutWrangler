@@ -15,23 +15,30 @@
         {
             if (disposing)
             {
+                pictureBoxView.Image?.Dispose();
+
                 if ((components != null))
                 {
                     components.Dispose();
                 }
 
-                worker.Dispose();
-                worker = null;
-
-                doc?.Dispose();
-                doc = null;
-
-                foreach (Image image in images.Values)
+                foreach (IDisposable disposable in disposables)
                 {
-                    image.Dispose();
+                    disposable?.Dispose();
                 }
 
-                wait?.Dispose();
+                //worker.Dispose();
+                //worker = null;
+
+                //doc?.Dispose();
+                //doc = null;
+
+                //foreach (Image image in images)
+                //{
+                //    image?.Dispose();
+                //}
+
+                //wait?.Dispose();
             }
 
             base.Dispose(disposing);
