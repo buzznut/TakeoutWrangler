@@ -1,4 +1,4 @@
-//  <@$&< copyright begin >&$@> D50225522CB19A3A2E3CA10257DC538D19677A6406D028F0BBE01DE33387A4EA:20241017.A:2024:11:16:13:40
+//  <@$&< copyright begin >&$@> D50225522CB19A3A2E3CA10257DC538D19677A6406D028F0BBE01DE33387A4EA:20241017.A:2024:12:23:9:15
 // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 // Copyright © 2024 Stewart A. Nutter - All Rights Reserved.
 // No warranty is implied or given.
@@ -39,6 +39,8 @@ namespace TakeoutWrangler
 
                 helpStreams.Clear();
                 worker?.Dispose();
+
+                backBrush?.Dispose();
             }
 
             base.Dispose(disposing);
@@ -56,8 +58,6 @@ namespace TakeoutWrangler
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(MainForm));
             menuStripMainMenu = new MenuStrip();
             fileToolStripMenuItem = new ToolStripMenuItem();
-            toolStripMenuTakeout = new ToolStripMenuItem();
-            toolStripSeparator2 = new ToolStripSeparator();
             clearToolStripMenuItem = new ToolStripMenuItem();
             toolStripMenuItemPrint = new ToolStripMenuItem();
             toolStripSaveConsole = new ToolStripMenuItem();
@@ -70,7 +70,8 @@ namespace TakeoutWrangler
             howToUseGoogleTakeoutToolStripMenuItem = new ToolStripMenuItem();
             toolStripSeparator3 = new ToolStripSeparator();
             aboutToolStripMenuItem = new ToolStripMenuItem();
-            listBoxView = new ListBox();
+            listBoxView = new DataGridView();
+            Column = new DataGridViewTextBoxColumn();
             timerView = new System.Windows.Forms.Timer(components);
             buttonRun = new Button();
             printDialog = new PrintDialog();
@@ -78,7 +79,9 @@ namespace TakeoutWrangler
             textBoxStatus = new TextBox();
             labelProgress = new Label();
             timerIsRunning = new System.Windows.Forms.Timer(components);
+            toolStripMenuTakeout = new ToolStripMenuItem();
             menuStripMainMenu.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)listBoxView).BeginInit();
             SuspendLayout();
             // 
             // menuStripMainMenu
@@ -92,22 +95,10 @@ namespace TakeoutWrangler
             // 
             // fileToolStripMenuItem
             // 
-            fileToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { toolStripMenuTakeout, toolStripSeparator2, clearToolStripMenuItem, toolStripMenuItemPrint, toolStripSaveConsole, toolStripSeparator1, exitToolStripMenuItem });
+            fileToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { clearToolStripMenuItem, toolStripMenuItemPrint, toolStripSaveConsole, toolStripSeparator1, exitToolStripMenuItem });
             fileToolStripMenuItem.Name = "fileToolStripMenuItem";
             fileToolStripMenuItem.Size = new Size(37, 20);
             fileToolStripMenuItem.Text = "File";
-            // 
-            // toolStripMenuTakeout
-            // 
-            toolStripMenuTakeout.Name = "toolStripMenuTakeout";
-            toolStripMenuTakeout.Size = new Size(201, 22);
-            toolStripMenuTakeout.Text = "Google Takeout...";
-            toolStripMenuTakeout.Click += toolStripMenuTakeout_Click;
-            // 
-            // toolStripSeparator2
-            // 
-            toolStripSeparator2.Name = "toolStripSeparator2";
-            toolStripSeparator2.Size = new Size(198, 6);
             // 
             // clearToolStripMenuItem
             // 
@@ -152,13 +143,13 @@ namespace TakeoutWrangler
             // settingsToolStripMenuItem
             // 
             settingsToolStripMenuItem.Name = "settingsToolStripMenuItem";
-            settingsToolStripMenuItem.Size = new Size(125, 22);
+            settingsToolStripMenuItem.Size = new Size(180, 22);
             settingsToolStripMenuItem.Text = "Settings...";
             settingsToolStripMenuItem.Click += settingsToolStripMenuItem_Click;
             // 
             // helpToolStripMenuItem
             // 
-            helpToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { helpToolStripMenuItemHelp, howToUseGoogleTakeoutToolStripMenuItem, toolStripSeparator3, aboutToolStripMenuItem });
+            helpToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { helpToolStripMenuItemHelp, howToUseGoogleTakeoutToolStripMenuItem, toolStripMenuTakeout, toolStripSeparator3, aboutToolStripMenuItem });
             helpToolStripMenuItem.Name = "helpToolStripMenuItem";
             helpToolStripMenuItem.Size = new Size(44, 20);
             helpToolStripMenuItem.Text = "Help";
@@ -191,22 +182,38 @@ namespace TakeoutWrangler
             // 
             // listBoxView
             // 
+            listBoxView.AllowUserToAddRows = false;
             listBoxView.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
+            listBoxView.BackgroundColor = SystemColors.Control;
+            listBoxView.CellBorderStyle = DataGridViewCellBorderStyle.None;
+            listBoxView.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
+            listBoxView.ColumnHeadersVisible = false;
+            listBoxView.Columns.AddRange(new DataGridViewColumn[] { Column });
             listBoxView.Font = new Font("Consolas", 9F, FontStyle.Regular, GraphicsUnit.Point, 0);
-            listBoxView.FormattingEnabled = true;
-            listBoxView.HorizontalScrollbar = true;
-            listBoxView.ItemHeight = 14;
             listBoxView.Location = new Point(5, 24);
             listBoxView.Name = "listBoxView";
-            listBoxView.SelectionMode = SelectionMode.None;
+            listBoxView.ReadOnly = true;
+            listBoxView.RowHeadersVisible = false;
+            listBoxView.RowHeadersWidthSizeMode = DataGridViewRowHeadersWidthSizeMode.DisableResizing;
+            listBoxView.RowTemplate.Height = 20;
+            listBoxView.RowTemplate.ReadOnly = true;
+            listBoxView.ShowEditingIcon = false;
             listBoxView.Size = new Size(632, 284);
             listBoxView.TabIndex = 1;
+            listBoxView.CellPainting += listBoxView_CellPainting;
             listBoxView.SizeChanged += listBoxView_SizeChanged;
             listBoxView.KeyDown += listBoxView_KeyDown;
             // 
+            // Column
+            // 
+            Column.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
+            Column.HeaderText = "Column";
+            Column.Name = "Column";
+            Column.ReadOnly = true;
+            // 
             // timerView
             // 
-            timerView.Interval = 200;
+            timerView.Interval = 250;
             timerView.Tick += timerView_Tick;
             // 
             // buttonRun
@@ -256,6 +263,13 @@ namespace TakeoutWrangler
             timerIsRunning.Interval = 250;
             timerIsRunning.Tick += timerIsRunning_Tick;
             // 
+            // toolStripMenuTakeout
+            // 
+            toolStripMenuTakeout.Name = "toolStripMenuTakeout";
+            toolStripMenuTakeout.Size = new Size(229, 22);
+            toolStripMenuTakeout.Text = "Go to Google Takeout...";
+            toolStripMenuTakeout.Click += toolStripMenuTakeout_Click;
+            // 
             // MainForm
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
@@ -274,6 +288,7 @@ namespace TakeoutWrangler
             Load += MainForm_Load;
             menuStripMainMenu.ResumeLayout(false);
             menuStripMainMenu.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)listBoxView).EndInit();
             ResumeLayout(false);
             PerformLayout();
         }
@@ -284,7 +299,7 @@ namespace TakeoutWrangler
         private ToolStripMenuItem fileToolStripMenuItem;
         private ToolStripMenuItem exitToolStripMenuItem;
         private ToolStripMenuItem viewToolStripMenuItem;
-        private ListBox listBoxView;
+        private DataGridView listBoxView;
         private System.Windows.Forms.Timer timerView;
         private Button buttonRun;
         private PrintDialog printDialog;
@@ -297,12 +312,12 @@ namespace TakeoutWrangler
         private Label labelProgress;
         private System.Windows.Forms.Timer timerIsRunning;
         private ToolStripMenuItem toolStripSaveConsole;
-        private ToolStripMenuItem toolStripMenuTakeout;
-        private ToolStripSeparator toolStripSeparator2;
         private ToolStripMenuItem helpToolStripMenuItem;
         private ToolStripMenuItem helpToolStripMenuItemHelp;
         private ToolStripMenuItem howToUseGoogleTakeoutToolStripMenuItem;
         private ToolStripSeparator toolStripSeparator3;
         private ToolStripMenuItem aboutToolStripMenuItem;
+        private DataGridViewTextBoxColumn Column;
+        private ToolStripMenuItem toolStripMenuTakeout;
     }
 }

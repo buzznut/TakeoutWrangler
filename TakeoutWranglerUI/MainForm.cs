@@ -1,4 +1,4 @@
-//  <@$&< copyright begin >&$@> D50225522CB19A3A2E3CA10257DC538D19677A6406D028F0BBE01DE33387A4EA:20241017.A:2024:11:16:13:40
+//  <@$&< copyright begin >&$@> D50225522CB19A3A2E3CA10257DC538D19677A6406D028F0BBE01DE33387A4EA:20241017.A:2024:12:23:9:15
 // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 // Copyright © 2024 Stewart A. Nutter - All Rights Reserved.
 // No warranty is implied or given.
@@ -26,14 +26,15 @@ public partial class MainForm : Form
     [DllImport("user32.dll", CharSet = CharSet.Auto)]
     public static extern uint RegisterWindowMessage(string lpString);
 
-    private int visibleItems;
+    //private int visibleItems;
     private PhotoCopier copier;
     private string stringToPrint;
-    private DateTime timerPause = DateTime.MinValue;
     private readonly string[] args;
     private AppSettingsJson settings;
     private Configs configs;
     private static uint viewMessage;
+    private static uint viewWarning;
+    private static uint viewError;
     private static uint viewStatus;
     private static IntPtr myHandle;
     private bool showNoUpdateAvailable;
@@ -48,6 +49,8 @@ public partial class MainForm : Form
     private BackgroundWorker worker;
     private string appDir = AppHelpers.GetApplicationDir();
     private bool pagesLoaded;
+    private readonly List<ListBoxItem> items = new List<ListBoxItem>();
+    private SolidBrush backBrush;
 
     private MainForm()
     {
@@ -60,8 +63,10 @@ public partial class MainForm : Form
 
         myHandle = Handle;
         viewMessage = RegisterWindowMessage("UIView_Message");
+        viewWarning = RegisterWindowMessage("UIView_Warning");
+        viewError = RegisterWindowMessage("UIView_Error");
         viewStatus = RegisterWindowMessage("UIView_Status");
-        visibleItems = listBoxView.ClientSize.Height / listBoxView.ItemHeight;
+        //visibleItems = listBoxView.ClientSize.Height / listBoxView.ItemHeight;
         ResumeLayout(true);
 
         worker = new BackgroundWorker
@@ -156,9 +161,8 @@ public partial class MainForm : Form
         if (m.Msg == viewMessage)
         {
             // Handle the custom message
-            listBoxView.SuspendLayout();
             string text = Marshal.PtrToStringAuto(m.WParam, Convert.ToInt32(m.LParam));
-            listBoxView.Items.Add(text ?? string.Empty);
+            items.Add(new ListBoxItem() { ItemColor = listBoxView.ForeColor, Message = text ?? string.Empty });
             timerView.Start();
         }
         else if (m.Msg == viewStatus)
@@ -166,13 +170,25 @@ public partial class MainForm : Form
             string text = Marshal.PtrToStringAuto(m.WParam, Convert.ToInt32(m.LParam));
             textBoxStatus.Text = text?.PadRight(13) ?? string.Empty;
         }
+        else if (m.Msg == viewWarning)
+        {
+            string text = Marshal.PtrToStringAuto(m.WParam, Convert.ToInt32(m.LParam));
+            items.Add(new ListBoxItem() { ItemColor = System.Drawing.Color.DarkOrange, Message = text ?? string.Empty });
+            timerView.Start();
+        }
+        else if (m.Msg == viewError)
+        {
+            string text = Marshal.PtrToStringAuto(m.WParam, Convert.ToInt32(m.LParam));
+            items.Add(new ListBoxItem() { ItemColor = System.Drawing.Color.FromArgb(214, 4, 9), Message = text ?? string.Empty });
+            timerView.Start();
+        }
 
         base.WndProc(ref m);
     }
 
     private PhotoCopier HandleConfiguration(string[] args)
     {
-        PhotoCopier photoCopier = new PhotoCopier(OutputHandler, StatusHandler) { UseParallel = true };
+        PhotoCopier photoCopier = new PhotoCopier(OutputHandler, IssueHandler, StatusHandler) { UseParallel = true };
         configs = photoCopier.GetConfiguration();
 
         try
@@ -191,17 +207,22 @@ public partial class MainForm : Form
             if (!Enum.TryParse(actionString, true, out PhotoCopierActions behavior)) behavior = PhotoCopierActions.Copy;
             if (!Enum.TryParse(loggingString, true, out LoggingVerbosity logging)) logging = LoggingVerbosity.Verbose;
 
-            photoCopier.Initialize(nameof(TakeoutWrangler), false, sourceDir, destinationDir, behavior, pattern, fileFilter, logging, listOnly);
+            ReturnCode result = photoCopier.Initialize(nameof(TakeoutWrangler), false, sourceDir, destinationDir, behavior, pattern, fileFilter, logging, listOnly);
+            if (result != ReturnCode.Success)
+            {
+                buttonRun.Enabled = false;
+                return null;
+            }
         }
         catch (Exception ex)
         {
-            OutputHandler(ex.Message);
+            IssueHandler(ex.Message, ErrorCode.Error);
         }
 
         return photoCopier;
     }
 
-    private static void StatusHandler(string status)
+    private static void StatusHandler(string status = null)
     {
         status ??= string.Empty;
 
@@ -215,13 +236,43 @@ public partial class MainForm : Form
 
     private static void OutputHandler(string output = null)
     {
+        IssueHandler(output ?? string.Empty, ErrorCode.Success);
+    }
+
+    private static void IssueHandler(string output, ErrorCode errorCode)
+    {
         output ??= string.Empty;
 
         IntPtr lpData = Marshal.StringToHGlobalAuto(output);
         IntPtr lpLength = new IntPtr(output.Length);
-        if (!PostMessage(myHandle, viewMessage, lpData, lpLength))
+        switch (errorCode)
         {
-            throw new Exception("Could not post view message.");
+            case ErrorCode.Success:
+            {
+                if (!PostMessage(myHandle, viewMessage, lpData, lpLength))
+                {
+                    throw new Exception("Could not post view message.");
+                }
+                break;
+            }
+
+            case ErrorCode.Warning:
+            {
+                if (!PostMessage(myHandle, viewWarning, lpData, lpLength))
+                {
+                    throw new Exception("Could not post view message.");
+                }
+                break;
+            }
+
+            case ErrorCode.Error:
+            {
+                if (!PostMessage(myHandle, viewError, lpData, lpLength))
+                {
+                    throw new Exception("Could not post view message.");
+                }
+                break;
+            }
         }
     }
 
@@ -285,8 +336,8 @@ public partial class MainForm : Form
             logging = settingsForm.Logging;
             listOnly = settingsForm.ListOnly;
 
-            listBoxView.Items.Clear();
-            PhotoCopier photoCopier = new PhotoCopier(OutputHandler, StatusHandler) { UseParallel = true };
+            listBoxView.Rows.Clear();
+            PhotoCopier photoCopier = new PhotoCopier(OutputHandler, IssueHandler, StatusHandler) { UseParallel = true };
 
             configs.SetString("action", behavior.ToString());
             configs.SetString("source", source);
@@ -301,8 +352,8 @@ public partial class MainForm : Form
                 configs.SaveSettings(settings);
             }
 
-            int okay = photoCopier.Initialize(nameof(TakeoutWrangler), false, source, destination, behavior, pattern, fileFilter, logging, listOnly);
-            if (okay == (int)ReturnCode.Success)
+            ReturnCode okay = photoCopier.Initialize(nameof(TakeoutWrangler), false, source, destination, behavior, pattern, fileFilter, logging, listOnly);
+            if (okay == ReturnCode.Success)
             {
                 copier = photoCopier;
                 buttonRun.Enabled = true;
@@ -317,7 +368,7 @@ public partial class MainForm : Form
 
     private void listBoxView_SizeChanged(object sender, EventArgs e)
     {
-        visibleItems = listBoxView.ClientSize.Height / listBoxView.ItemHeight;
+        //visibleItems = listBoxView.ClientSize.Height / 20;
     }
 
     private void timerView_Tick(object sender, EventArgs e)
@@ -325,16 +376,20 @@ public partial class MainForm : Form
         try
         {
             timerView.Stop();
-            listBoxView.TopIndex = Math.Max(listBoxView.Items.Count - visibleItems + 1, 0);
-            listBoxView.ResumeLayout(false);
+            if (items.Count > 0)
+            {
+                foreach (ListBoxItem item in items)
+                {
+                    int index = listBoxView.Rows.Add();
+                    listBoxView.Rows[index].Cells[0].Value = item;
+                }
+                listBoxView.FirstDisplayedScrollingRowIndex = listBoxView.RowCount - 1;
+                items.Clear();
+            }
         }
         finally
         {
-            if (DateTime.Now - timerPause < TimeSpan.FromMilliseconds(1000))
-            {
-                timerView.Start();
-            }
-            else if (copier == null)
+            if (copier == null)
             {
                 ShowSettings();
             }
@@ -354,7 +409,24 @@ public partial class MainForm : Form
         {
             ReturnCode code = await copier.RunAsync();
             OutputHandler();
-            OutputHandler($"Results: {code}");
+            IssueHandler($"Results: {code}", ErrorCodeFromReturnCode(code));
+        }
+    }
+
+    public static ErrorCode ErrorCodeFromReturnCode(ReturnCode code)
+    {
+        switch (code)
+        {
+            case ReturnCode.Success:
+                return ErrorCode.Success;
+            case ReturnCode.HadIssues:
+                return ErrorCode.Warning;
+            case ReturnCode.DirectoryError:
+                return ErrorCode.Error;
+            case ReturnCode.Canceled:
+                return ErrorCode.Warning;
+            default:
+                return ErrorCode.Error;
         }
     }
 
@@ -378,7 +450,7 @@ public partial class MainForm : Form
             out int charactersOnPage, out int _);
 
         // Draws the string within the bounds of the page
-        e.Graphics.DrawString(stringToPrint, Font, Brushes.Black,
+        e.Graphics.DrawString(stringToPrint, Font, System.Drawing.Brushes.Black,
             e.MarginBounds, StringFormat.GenericTypographic);
 
         // Remove the portion of the string that has been printed.
@@ -402,9 +474,9 @@ public partial class MainForm : Form
         try
         {
             StringBuilder sb = new StringBuilder();
-            foreach (object item in listBoxView.Items)
+            foreach (var row in listBoxView.Rows)
             {
-                sb.AppendLine(item?.ToString() ?? string.Empty);
+                sb.AppendLine(row?.ToString() ?? string.Empty);
             }
 
             stringToPrint = sb.ToString();
@@ -427,7 +499,7 @@ public partial class MainForm : Form
 
     private void clearToolStripMenuItem_Click(object sender, EventArgs e)
     {
-        listBoxView.Items.Clear();
+        listBoxView.Rows.Clear();
     }
 
     private void timerIsRunning_Tick(object sender, EventArgs e)
@@ -496,7 +568,7 @@ public partial class MainForm : Form
             FileStreamOptions fileStreamOptions = new FileStreamOptions { Access = FileAccess.Write, Mode = FileMode.Create };
             using (TextWriter tw = new StreamWriter(filename, fileStreamOptions))
             {
-                foreach (object item in listBoxView.Items)
+                foreach (object item in listBoxView.Rows)
                 {
                     tw.WriteLine(item.ToString());
                 }
@@ -518,7 +590,7 @@ public partial class MainForm : Form
         if (e.KeyCode == Keys.C && e.Control)
         {
             StringBuilder sb = new StringBuilder();
-            foreach (object item in listBoxView.SelectedItems)
+            foreach (object item in listBoxView.SelectedRows)
             {
                 sb.AppendLine(item?.ToString() ?? string.Empty);
             }
@@ -526,9 +598,9 @@ public partial class MainForm : Form
         }
         else if (e.KeyCode == Keys.A && e.Control)
         {
-            foreach (int index in Enumerable.Range(0, listBoxView.Items.Count))
+            foreach (int index in Enumerable.Range(0, listBoxView.Rows.Count))
             {
-                listBoxView.SetSelected(index, true);
+                //listBoxView.SetSelected(index, true);
             }
         }
     }
@@ -574,6 +646,41 @@ public partial class MainForm : Form
             viewer.Initialize(appDir, "About TakeoutWrangler", "About.pdf");
         viewer.ShowDialog();
     }
+
+    private void listBoxView_DrawItem(object sender, DrawItemEventArgs e)
+    {
+        {
+            if (e.Index < 0) return;
+
+            DataGridViewRow item = listBoxView.Rows[e.Index];
+            if (item != null)
+            {
+                e.DrawBackground();
+                //e.Graphics.DrawString(item.Message, e.Font ?? listBoxView.Font, new SolidBrush(item.ItemColor), e.Bounds);
+                e.DrawFocusRectangle();
+            }
+        }
+    }
+
+    private void listBoxView_CellPainting(object sender, DataGridViewCellPaintingEventArgs e)
+    {
+        if (e.RowIndex < 0 || e.Graphics == null) return;
+        DataGridViewRow row = listBoxView.Rows[e.RowIndex];
+        DataGridViewCell cell = row.Cells[0];
+        backBrush ??= new SolidBrush(BackColor);
+
+        Font cellFont = e.CellStyle?.Font ?? listBoxView.Font;
+        listBoxView.RowTemplate.Height = cellFont.Height;
+        row.Height = cellFont.Height;
+
+        ListBoxItem item = listBoxView.Rows[e.RowIndex].Cells[0].Value as ListBoxItem;
+        if (item == null) return;
+
+        SolidBrush foreBrush = new SolidBrush(item.ItemColor);
+        e.Graphics.FillRectangle(backBrush, e.CellBounds);
+        e.Graphics.DrawString(item.Message, cellFont, foreBrush, e.CellBounds);
+        e.Handled = true;
+    }
 }
 
 public class PageLoadData
@@ -581,4 +688,10 @@ public class PageLoadData
     public string PdfFileName { get; set; }
     public Stream[] Pages { get; set; }
     public int Index { get; set; }
+}
+
+public class  ListBoxItem
+{
+    public string Message { get; set; }
+    public Color ItemColor { get; set; }
 }

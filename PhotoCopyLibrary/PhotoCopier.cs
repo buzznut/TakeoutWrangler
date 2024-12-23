@@ -1,4 +1,4 @@
- //  <@$&< copyright begin >&$@> D50225522CB19A3A2E3CA10257DC538D19677A6406D028F0BBE01DE33387A4EA:20241017.A:2024:11:16:13:40
+//  <@$&< copyright begin >&$@> D50225522CB19A3A2E3CA10257DC538D19677A6406D028F0BBE01DE33387A4EA:20241017.A:2024:12:23:9:15
 // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 // Copyright © 2024 Stewart A. Nutter - All Rights Reserved.
 // No warranty is implied or given.
@@ -17,7 +17,6 @@ using MetadataExtractor.Formats.QuickTime;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System.Collections.Concurrent;
-using System.ComponentModel.Design.Serialization;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO.Compression;
@@ -27,6 +26,7 @@ using System.Text;
 namespace PhotoCopyLibrary;
 
 public delegate void HandleOutput(string output = null);
+public delegate void IssueOutput(string output, ErrorCode errorCode);
 
 public class PhotoCopier
 {
@@ -34,10 +34,11 @@ public class PhotoCopier
 
     private int canceled;
     private int zipFileCount;
-    private int newCount;
+    private int progressCount;
     private int errorCount;
     private int skipCount;
-    private int fileCount;
+    private int duplicateCount;
+    private int totalCount;
 
     private string sourceDir;
     private string destDir;
@@ -49,6 +50,8 @@ public class PhotoCopier
 
     private readonly char[] separator = new char[] { '.' };
     private readonly HandleOutput outputHandler = DummyHandler;
+    private readonly IssueOutput warningHandler = DummyIssueHandler;
+    private readonly IssueOutput errorHandler = DummyIssueHandler;
     private readonly HandleOutput statusHandler = DummyHandler;
     private readonly ConcurrentBag<ZipArchive> archives = new ConcurrentBag<ZipArchive>();
     private readonly ConcurrentDictionary<string, MediaInfo> mediaKeys = new ConcurrentDictionary<string, MediaInfo>(StringComparer.OrdinalIgnoreCase);
@@ -66,26 +69,37 @@ public class PhotoCopier
         new ConfigParam { Name = "listonly", Synonyms = ["list"], Default = true, PType = ParamType.Bool }
     };
 
-    private static void DummyHandler(string output = null)
+    private static void DummyIssueHandler(string output, ErrorCode errorCode)
     {
         // do nothing with the string
     }
 
+    private static void DummyHandler(string output = null)
+    {
+        DummyIssueHandler(output ?? string.Empty, ErrorCode.Success);
+    }
+
     private PhotoCopier() { }
 
-    public PhotoCopier(HandleOutput output, HandleOutput status)
+    public PhotoCopier(HandleOutput output, IssueOutput issue, HandleOutput status)
     {
         outputHandler = output;
         statusHandler = status;
+        warningHandler = issue;
+        errorHandler = issue;
     }
 
-    public int Initialize(string appName, bool help, string sourceDir, string destDir, PhotoCopierActions behavior, string pattern, string fileFilter, LoggingVerbosity logging, bool listOnly)
+    public ReturnCode Initialize(string appName, bool help, string sourceDir, string destDir, PhotoCopierActions behavior, string pattern, string fileFilter, LoggingVerbosity logging, bool listOnly)
     {
         try
         {
             string[] allActions = Enum.GetNames(typeof(PhotoCopierActions));
 
             List<string> reasons = new List<string>();
+
+            // trim trailing backslashes
+            if (sourceDir.EndsWith('\\')) sourceDir = sourceDir.Substring(0, sourceDir.Length - 1);
+            if (destDir.EndsWith('\\')) destDir = destDir.Substring(0, destDir.Length - 1);
 
             // validate paths
             help |= !Configs.ValidatePath(sourceDir, "Source", reasons);
@@ -121,35 +135,39 @@ public class PhotoCopier
                 outputHandler($" pattern=text        Destination folder name pattern. (default=$y_$m");
                 outputHandler();
                 outputHandler($"                     example: if date-time, is March 27, 2024 at 3:33PM");
+                outputHandler();
                 outputHandler($"                              $y = 4 digit year. ex: 2024");
                 outputHandler($"                              $m = 2 digit month. ex: 03");
+                outputHandler($"                              $M = month name. ex: March");
                 outputHandler($"                              $d = 2 digit day. ex: 27");
                 outputHandler($"                              $h = 2 digit hour. ex: 15 (24 hours per day)");
+                outputHandler();
+                outputHandler($"                              '$y\\Sam-$M($d)' \"root\\2024\\Sam-March(3)\"");
                 outputHandler();
                 outputHandler($" filter=text         photo archive file filter. (default='takeout-*.zip')");
                 outputHandler();
 
                 if (reasons.Count > 0)
                 {
-                    outputHandler("Issues: ");
+                    warningHandler("Issues: ", ErrorCode.Warning);
 
                     int index = 1;
                     foreach (string reason in reasons)
                     {
-                        outputHandler($"  {index++}. {reason}");
+                        warningHandler($"  {index++}. {reason}", ErrorCode.Warning);
                     }
 
                     outputHandler();
                 }
 
-                return (int)ReturnCode.HadIssues;
+                return ReturnCode.HadIssues;
             }
 
             string[] sourceFiles = System.IO.Directory.GetFiles(sourceDir, fileFilter);
             if (sourceFiles == null || sourceFiles.Length == 0)
             {
                 outputHandler($"No source files found. sourceDir:\"{sourceDir}\", file filter:\"{fileFilter}\"");
-                return (int)ReturnCode.DirectoryError;
+                return ReturnCode.DirectoryError;
             }
 
             // keep the parameters
@@ -185,7 +203,7 @@ public class PhotoCopier
         {
             if (Debugger.IsAttached) Debugger.Break();
             outputHandler(ex.ToString());
-            return (int)ReturnCode.Error;
+            return ReturnCode.Error;
         }
     }
 
@@ -202,21 +220,22 @@ public class PhotoCopier
         try
         {
             canceled = 0;
-            fileCount = 0;
-            newCount = 0;
             skipCount = 0;
             errorCount = 0;
+            zipFileCount = 0;
+            progressCount = 0;
+            duplicateCount = 0;
+            totalCount = 0;
 
             IsRunning = true;
  
-            Interlocked.Exchange(ref fileCount, 0);
             if (behavior == PhotoCopierActions.Copy || behavior == PhotoCopierActions.Overwrite)
             {
                 await ProcessDirAsync(sourceDir, destDir, fileFilter);
             }
             else if (behavior == PhotoCopierActions.Reorder)
             {
-                fileCount = System.IO.Directory.EnumerateFiles(sourceDir, "*.*", SearchOption.AllDirectories).Count();
+                Interlocked.Exchange(ref totalCount, System.IO.Directory.EnumerateFiles(destDir, "*.*", SearchOption.AllDirectories).Count());
                 await ReorderDirAsync(destDir, pattern, destDir);
             }
             else
@@ -250,9 +269,9 @@ public class PhotoCopier
             archives.Clear();
             stopwatch.Stop();
 
-             outputHandler();
+            outputHandler();
             outputHandler($"elapsed={stopwatch.Elapsed}, filter=\"{fileFilter}\"");
-            outputHandler($"{behavior}: counts: zip={zipFileCount}, new={newCount}, skipped={skipCount}, errors={errorCount}");
+            outputHandler($"{behavior}: zipFiles={zipFileCount}, newItems={progressCount}, duplicateFiles={duplicateCount}, skippedFolders={skipCount}, errors={errorCount}");
 
             IsRunning = false;
         }
@@ -279,8 +298,8 @@ public class PhotoCopier
                 {
                     if (Debugger.IsAttached) Debugger.Break();
                     Interlocked.Increment(ref errorCount);
-                    outputHandler($"Error:{Interlocked.Add(ref fileCount, 0)}/{Interlocked.Add(ref newCount, 0)} Invalid file type");
-                    statusHandler($"{Interlocked.Add(ref fileCount, 0)}/{Interlocked.Add(ref newCount, 0)}");
+                    errorHandler($"Error:{Progress} Invalid file type", ErrorCode.Error);
+                    statusHandler($"{Progress}");
                     return;
                 }
 
@@ -306,67 +325,68 @@ public class PhotoCopier
                         }
                     }
                     else
-                     {
+                    {
                         if (Debugger.IsAttached) Debugger.Break();
                     }
                 }
 
-                Interlocked.Increment(ref newCount);
-                targetDir = DirectoryNameFromDate(mediaDate);
-                string newFilePath = Path.Combine(root, targetDir, Path.GetFileName(mediaFullPath));
+                Interlocked.Increment(ref progressCount);
+                string newFileDir = DirectoryNameFromDate(root, mediaDate, out targetDir);
+                if (newFileDir == null) continue;
+
+                string newFilePath = Path.Combine(newFileDir, mediaFileName);
 
                 if (newFilePath.Equals(mediaFullPath, StringComparison.OrdinalIgnoreCase))
                 {
                     Interlocked.Increment(ref skipCount);
                     if (logging == LoggingVerbosity.Verbose)
                     {
-                        outputHandler($"{Interlocked.Add(ref fileCount, 0)}/{Interlocked.Add(ref newCount, 0)} Skipping duplicate folder:\"{Path.Combine(".", sourceDir)}\"");
+                        outputHandler($"{Progress} Skipping duplicate folder:\"{Path.Combine(".", sourceDir)}\"");
                     }
-                    statusHandler($"{Interlocked.Add(ref fileCount, 0)}/{Interlocked.Add(ref newCount, 0)}");
+                    statusHandler($"{Progress}");
                     continue;
                 }
 
-                string newDir = Path.GetDirectoryName(newFilePath);
-                if (newDir == null)
+                if (newFileDir == null)
                 {
                     if (Debugger.IsAttached) Debugger.Break();
                     Interlocked.Increment(ref errorCount);
-                    outputHandler($"Error:{Interlocked.Add(ref fileCount, 0)}/{Interlocked.Add(ref newCount, 0)} New file dir should not be null");
-                    statusHandler($"{Interlocked.Add(ref fileCount, 0)}/{Interlocked.Add(ref newCount, 0)}");
+                    errorHandler($"Error:{Progress} New file dir should not be null", ErrorCode.Error);
+                    statusHandler($"{Progress}");
                     return;
                 }
 
                 if (!listOnly)
                 {
-                    System.IO.Directory.CreateDirectory(newDir);
+                    System.IO.Directory.CreateDirectory(newFileDir);
                     File.Move(mediaFullPath, newFilePath);
                 }
 
                 string verb = listOnly ? "Would move" : "Moved";
-                if (logging != LoggingVerbosity.Quiet) outputHandler($"{Interlocked.Add(ref fileCount, 0)}/{Interlocked.Add(ref newCount, 0)} {verb} file:\"{mediaFileName}\" to \"{Path.Combine(".", targetDir)}\"");
-                statusHandler($"{Interlocked.Add(ref fileCount, 0)}/{Interlocked.Add(ref newCount, 0)}");
+                if (logging != LoggingVerbosity.Quiet) outputHandler($"{Progress} {verb} file:\"{mediaFileName}\" to \"{Path.Combine(".", targetDir)}\"");
+                statusHandler($"{Progress}");
             }
             catch (Exception ex)
             {
                 if (Debugger.IsAttached) Debugger.Break();
                 Interlocked.Increment(ref errorCount);
-                outputHandler($"Error:{Interlocked.Add(ref fileCount, 0)}/{Interlocked.Add(ref newCount, 0)} Could not move file:\"{mediaFileName}\" from \"{Path.Combine(".", sourceDir)}\" to \"{Path.Combine(".", targetDir)}\". Reason={ex.Message}");
+                errorHandler($"Error:{Progress} Could not move file:\"{mediaFileName}\" from \"{Path.Combine(".", sourceDir)}\" to \"{Path.Combine(".", targetDir)}\". Reason={ex.Message}", ErrorCode.Error);
             }
+        }
+
+        foreach (string mediaFile in System.IO.Directory.EnumerateDirectories(dir, "*.*", SearchOption.TopDirectoryOnly))
+        {
+            if (Interlocked.Add(ref canceled, 0) > 0) break;
+            await ReorderDirAsync(Path.Combine(dir, mediaFile), pattern, root);
         }
 
         if (!System.IO.Directory.EnumerateFileSystemEntries(dir).Any())
         {
             System.IO.Directory.Delete(dir, true);
         }
-        else
-        {
-            foreach (string mediaFile in System.IO.Directory.EnumerateDirectories(dir, "*.*", SearchOption.TopDirectoryOnly))
-            {
-                if (Interlocked.Add(ref canceled, 0) > 0) break;
-                await ReorderDirAsync(Path.Combine(dir, mediaFile), pattern, root);
-            }
-        }
     }
+
+    private string Progress => $"{Interlocked.Add(ref progressCount, 0)}/{Interlocked.Add(ref totalCount, 0)}";
 
     private string GetDateFromMediaStream(Stream mediaStream, out DateTime? mediaDate)
     {
@@ -574,7 +594,7 @@ public class PhotoCopier
             DirectoryInfo directoryInfo = new DirectoryInfo(entity);
             if (directoryInfo.Attributes.HasFlag(FileAttributes.Directory))
             {
-                await ProcessDirAsync(Path.Combine(src, entity), Path.Combine(dst, entity), fileFilter);
+            //    await ProcessDirAsync(Path.Combine(src, entity), Path.Combine(dst, entity), fileFilter);
             }
         }
 
@@ -583,8 +603,8 @@ public class PhotoCopier
             mediaKeys.TryRemove(key, out _);
         }
 
-        int count = mediaKeys.Count;
-        await ProcessMediaAsync(dst, count);
+        Interlocked.Exchange(ref totalCount, mediaKeys.Count);
+        await ProcessMediaAsync(dst);
         if (Interlocked.Add(ref canceled, 0) > 0)
         {
             return;
@@ -640,7 +660,7 @@ public class PhotoCopier
                 if (path == null)
                 {
                     Interlocked.Increment(ref errorCount);
-                    outputHandler($"Error: root, {root} is not a directory. Reason=InvalidPath");
+                    errorHandler($"Error: root, {root} is not a directory. Reason=InvalidPath", ErrorCode.Error);
                     continue;
                 }
 
@@ -710,26 +730,46 @@ public class PhotoCopier
         {
             if (Debugger.IsAttached) Debugger.Break();
             Interlocked.Increment(ref errorCount);
-            outputHandler($"Error: Could not process zipfile {zip}. Reason={ex.Message}");
+            errorHandler($"Error: Could not process zipfile {zip}. Reason={ex.Message}", ErrorCode.Error);
         }
     }
 
-    private string DirectoryNameFromDate(DateTime? date)
+    private string DirectoryNameFromDate(string root, DateTime? date, out string targetDir)
     {
+        targetDir = "no-date";
+
         if (date != null)
-        {
+        {   
             string year = $"{date.Value:yyyy}";
             string month = $"{date.Value:MM}";
             string day = $"{date.Value:dd}";
             string hour = $"{date.Value:HH}";
 
-            return pattern.Replace("$y", year, StringComparison.OrdinalIgnoreCase)
-                .Replace("$m", month, StringComparison.OrdinalIgnoreCase)
+            targetDir = pattern.Replace("$y", year, StringComparison.OrdinalIgnoreCase)
+                .Replace("$m", month)
                 .Replace("$d", day, StringComparison.OrdinalIgnoreCase)
-                .Replace("$h", hour, StringComparison.OrdinalIgnoreCase);
+                .Replace("$h", hour, StringComparison.OrdinalIgnoreCase)
+                .Replace("$M", MonthName(date.Value.Month));
         }
 
-        return "no-date";
+        string newFilePath = Path.GetFullPath(Path.Combine(root, targetDir));
+
+        if (newFilePath == null || !newFilePath.StartsWith(root, StringComparison.OrdinalIgnoreCase))
+        {
+            if (Debugger.IsAttached) Debugger.Break();
+            Interlocked.Increment(ref errorCount);
+            errorHandler($"Error:{Progress} Invalid target file path:\"{newFilePath ?? "null"}\"", ErrorCode.Error);
+            return null;
+        }
+
+        return newFilePath;
+    }
+
+    private string MonthName(int monthNumber)
+    {
+        CultureInfo culture = CultureInfo.CurrentCulture;
+        DateTimeFormatInfo dtfi = culture.DateTimeFormat;
+        return dtfi.GetMonthName(monthNumber);
     }
 
     private void RecurseDeserialize(Dictionary<string, object> result)
@@ -744,7 +784,7 @@ public class PhotoCopier
                 if (dictionaries == null)
                 {
                     Interlocked.Increment(ref errorCount);
-                    outputHandler($"Error: Could not deserialize object {jarray}. Reason=InvalidObject");
+                    errorHandler($"Error: Could not deserialize object {jarray}. Reason=InvalidObject", ErrorCode.Error);
                     continue;
                 }
 
@@ -907,25 +947,25 @@ public class PhotoCopier
         return new Configs(paramTypes, true);
     }
 
-    private async Task ProcessMediaAsync(string dst, int count)
+    private async Task ProcessMediaAsync(string dst)
     {
         if (mediaKeys.IsEmpty) return;
 
         if (UseParallel)
         {
-            await Task.Run(() => Parallel.ForEach(mediaKeys.Keys, entryKey => ProcessEntry(null, entryKey, dst, count)));
+            await Task.Run(() => Parallel.ForEach(mediaKeys.Keys, entryKey => ProcessEntry(null, entryKey, dst)));
         }
         else
         {
             foreach (string entryKey in mediaKeys.Keys)
             {
                 if (Interlocked.Add(ref canceled, 0) > 0) break;
-                await Task.Run(() => ProcessEntry(null, entryKey, dst, count));
+                await Task.Run(() => ProcessEntry(null, entryKey, dst));
             }
         }
     }
 
-    private void ProcessEntry(ZipArchive archive, string entryKey, string dst, int count)
+    private void ProcessEntry(ZipArchive archive, string entryKey, string dst)
     {
         if (Interlocked.Add(ref canceled, 0) > 0) return;
 
@@ -933,8 +973,8 @@ public class PhotoCopier
         {
             if (Debugger.IsAttached) Debugger.Break();
             Interlocked.Increment(ref errorCount);
-            outputHandler($"Error:{Interlocked.Add(ref fileCount, 0)}/{Interlocked.Add(ref newCount, 0)} Invalid zip entry key: {entryKey}");
-            statusHandler($"{Interlocked.Add(ref fileCount, 0)}/{Interlocked.Add(ref newCount, 0)}");
+            errorHandler($"Error:{Progress} Invalid zip entry key: {entryKey}", ErrorCode.Error);
+            statusHandler($"{Progress}");
             return;
         }
 
@@ -970,7 +1010,7 @@ public class PhotoCopier
                 entryStream?.CopyTo(zipStream);
             }
 
-            Interlocked.Increment(ref fileCount);
+            Interlocked.Increment(ref progressCount);
 
             // 1. get date from media metadata
             string fileType = GetDateFromMediaStream(zipStream, out mediaDate);
@@ -979,8 +1019,8 @@ public class PhotoCopier
             {
                 if (Debugger.IsAttached) Debugger.Break();
                 Interlocked.Increment(ref errorCount);
-                outputHandler($"Error:{Interlocked.Add(ref fileCount, 0)}/{Interlocked.Add(ref newCount, 0)} Invalid file type");
-                statusHandler($"{Interlocked.Add(ref fileCount, 0)}/{Interlocked.Add(ref newCount, 0)}");
+                errorHandler($"Error:{Progress} Invalid file type", ErrorCode.Error);
+                statusHandler($"{Progress}");
                 return;
             }
 
@@ -1021,8 +1061,7 @@ public class PhotoCopier
 
             string filePath = null;
 
-            targetDir = DirectoryNameFromDate(mediaDate);
-            string folderPath = Path.Combine(dst, targetDir);
+            string folderPath = DirectoryNameFromDate(dst, mediaDate, out targetDir);
 
             if (!listOnly) System.IO.Directory.CreateDirectory(folderPath);
             filePath = Path.Combine(folderPath, entry.Name);
@@ -1046,8 +1085,8 @@ public class PhotoCopier
                 {
                     if (Debugger.IsAttached) Debugger.Break();
                     Interlocked.Increment(ref errorCount);
-                    outputHandler($"Error:{Interlocked.Add(ref fileCount, 0)}/{Interlocked.Add(ref newCount, 0)} Could not open existing file: {filePath}");
-                    statusHandler($"{Interlocked.Add(ref fileCount, 0)}/{Interlocked.Add(ref newCount, 0)}");
+                    errorHandler($"Error:{Progress} Could not open existing file: {filePath}", ErrorCode.Error);
+                    statusHandler($"{Progress}");
                     return;
                 }
 
@@ -1062,9 +1101,10 @@ public class PhotoCopier
                 if (sameHash)
                 {
                     // don't copy since everything is the same - name & content
-                    if (logging == LoggingVerbosity.Verbose) outputHandler($"{Interlocked.Add(ref fileCount, 0)}/{count} Skipping existing file:\"{entry.Name}\" in \"{Path.Combine(".", targetDir)}\"");
-                    statusHandler($"{Interlocked.Add(ref fileCount, 0)}/{count}");
-                    Interlocked.Increment(ref skipCount);
+                    string text = listOnly ? "List(duplicate)" : "Duplicate";
+                    if (logging == LoggingVerbosity.Verbose) outputHandler($"{Progress} {text}:\"{entry.Name}\" in \"{Path.Combine(".", targetDir)}\"");
+                    statusHandler($"{Progress}");
+                    Interlocked.Increment(ref duplicateCount);
                     return;
                 }
 
@@ -1092,9 +1132,9 @@ public class PhotoCopier
                     if (zipHash.SequenceEqual(fileHash))
                     {
                         // don't copy existing media
-                        if (logging == LoggingVerbosity.Verbose) outputHandler($"{Interlocked.Add(ref fileCount, 0)}/{count} Skipping existing file:\"{entry.Name}\" in \"{Path.Combine(".", targetDir, fname)}\"");
-                        statusHandler($"{Interlocked.Add(ref fileCount, 0)}/{count}");
-                        Interlocked.Increment(ref skipCount);
+                        if (logging == LoggingVerbosity.Verbose) outputHandler($"{Progress} Skipping duplicate file:\"{entry.Name}\" in \"{Path.Combine(".", targetDir, fname)}\"");
+                        statusHandler($"{Progress}");
+                        Interlocked.Increment(ref duplicateCount);
                         return;
                     }
 
@@ -1114,8 +1154,8 @@ public class PhotoCopier
                     {
                         if (Debugger.IsAttached) Debugger.Break();
                         Interlocked.Increment(ref errorCount);
-                        outputHandler($"Error:{Interlocked.Add(ref fileCount, 0)}/{Interlocked.Add(ref newCount, 0)} Could not open or create file: {filePath}");
-                        statusHandler($"{Interlocked.Add(ref fileCount, 0)}/{Interlocked.Add(ref newCount, 0)}");
+                        errorHandler($"Error:{Progress} Could not open or create file: {filePath}", ErrorCode.Error);
+                        statusHandler($"{Progress}");
                         return;
                     }
 
@@ -1126,8 +1166,8 @@ public class PhotoCopier
                 fileStream.Seek(0, SeekOrigin.Begin);
 
                 string verb = listOnly ? "Would copy" : "Copied";
-                if (logging != LoggingVerbosity.Quiet) outputHandler($"{Interlocked.Add(ref fileCount, 0)}/{count} {verb} file:\"{entry.Name}\" to \"{Path.Combine(".", targetDir, fname)}\"");
-                statusHandler($"{Interlocked.Add(ref fileCount, 0)}/{count}");
+                if (logging != LoggingVerbosity.Quiet) outputHandler($"{Progress} {verb} file:\"{entry.Name}\" to \"{Path.Combine(".", targetDir, fname)}\"");
+                statusHandler($"{Progress}");
 
                 if (exif == null)
                 {
@@ -1140,8 +1180,6 @@ public class PhotoCopier
 
                 if (mediaDate != null) File.SetCreationTime(filePath, mediaDate.Value);
             }
-
-            Interlocked.Increment(ref newCount);
         }
         catch (IOException ioex)
         {
@@ -1153,15 +1191,15 @@ public class PhotoCopier
 
             if (Debugger.IsAttached) Debugger.Break();
             Interlocked.Increment(ref errorCount);
-            outputHandler($"Error:{Interlocked.Add(ref fileCount, 0)}/{count} Could not extract {entryKey}. Reason={ioex.Message}");
-            statusHandler($"{Interlocked.Add(ref fileCount, 0)}/{count}");
+            errorHandler($"Error:{Progress} Could not extract {entryKey}. Reason={ioex.Message}", ErrorCode.Error);
+            statusHandler($"{Progress}");
         }
         catch (Exception ex)
         {
             if (Debugger.IsAttached) Debugger.Break();
             Interlocked.Increment(ref errorCount);
-            outputHandler($"Error:{Interlocked.Add(ref fileCount, 0)}/{count} Could not extract {entryKey}. Reason={ex.Message}");
-            statusHandler($"{Interlocked.Add(ref fileCount, 0)}/{count}");
+            errorHandler($"Error:{Progress} Could not extract {entryKey}. Reason={ex.Message}", ErrorCode.Error);
+            statusHandler($"{Progress}");
         }
         finally
         {
@@ -1189,7 +1227,7 @@ public class PhotoCopier
         return new MemoryStream(Convert.ToInt32(length));
     }
 
-    public bool ValidateSource(string folderPath, string filter, out string reason)
+    public static bool ValidateSource(string folderPath, string filter, out string reason)
     {
         reason = string.Empty;
 
@@ -1217,7 +1255,7 @@ public class PhotoCopier
         return true;
     }
 
-    public bool ValidateDestination(string folderPath, out string reason)
+    public static bool ValidateDestination(string folderPath, out string reason)
     {
         reason = string.Empty;
 

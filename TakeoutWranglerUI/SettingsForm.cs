@@ -1,4 +1,4 @@
-//  <@$&< copyright begin >&$@> D50225522CB19A3A2E3CA10257DC538D19677A6406D028F0BBE01DE33387A4EA:20241017.A:2024:11:16:13:40
+//  <@$&< copyright begin >&$@> D50225522CB19A3A2E3CA10257DC538D19677A6406D028F0BBE01DE33387A4EA:20241017.A:2024:12:23:9:15
 // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 // Copyright © 2024 Stewart A. Nutter - All Rights Reserved.
 // No warranty is implied or given.
@@ -97,7 +97,7 @@ public partial class SettingsForm : Form
 
         if (changed)
         {
-            if (!PhotoCopierSession.ValidateSource(textBoxSource.Text, Filter, out reason))
+            if (!PhotoCopier.ValidateSource(textBoxSource.Text, Filter, out reason))
             {
                 DialogResult validateResult = MessageBox.Show($"{reason}. Continue?", "Validate Source", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
                 if (validateResult == DialogResult.No)
@@ -107,7 +107,7 @@ public partial class SettingsForm : Form
                 }
             }
 
-            if (!PhotoCopierSession.ValidateDestination(textBoxDestination.Text, out reason))
+            if (!PhotoCopier.ValidateDestination(textBoxDestination.Text, out reason))
             {
                 MessageBox.Show(reason, "Validate Target", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 DialogResult = DialogResult.None;

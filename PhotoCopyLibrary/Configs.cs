@@ -1,4 +1,4 @@
-//  <@$&< copyright begin >&$@> D50225522CB19A3A2E3CA10257DC538D19677A6406D028F0BBE01DE33387A4EA:20241017.A:2024:11:16:13:40
+//  <@$&< copyright begin >&$@> D50225522CB19A3A2E3CA10257DC538D19677A6406D028F0BBE01DE33387A4EA:20241017.A:2024:12:23:9:15
 // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 // Copyright © 2024 Stewart A. Nutter - All Rights Reserved.
 // No warranty is implied or given.
@@ -365,13 +365,19 @@ public class Configs
     {
         if (string.IsNullOrEmpty(dir))
         {
-            reasons.Add($"{context} cannot be null or empty");
+            reasons.Add($"{context} cannot be null or empty.");
+            return false;
+        }
+
+        if (dir.Contains("..") || dir.Contains(".\\") || !dir.Equals(Path.GetFullPath(dir), StringComparison.OrdinalIgnoreCase))
+        {
+            reasons.Add($"{context} must be fully qualified and without relative pathing: (\"{dir}\".");
             return false;
         }
 
         if (!Directory.Exists(dir))
         {
-            reasons.Add($"{context} must exist: {dir}");
+            reasons.Add($"{context} must exist: \"{dir}\".");
             return false;
         }
 

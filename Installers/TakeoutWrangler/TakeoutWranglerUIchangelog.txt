@@ -1,3 +1,12 @@
+1.0.84.1222 - 2024/12/23 02:22:44
+    1) Added more help. Changed path validation messages. Color console output for warnings and errors. Added month naming and path handling. Other bug fixes and updates.
+    2) Added some documentation. Doing some work in parallel. Added HelpViewer for showing PDF documentation.\
+    3) Folder name changes. Help and instructions display and documents.
+    4) Added "Reorder". Fixed remaining date parsing issues. Added code to set date on EXIF file formats (jpeg, tiff, png). Several UI tweaks. Added copyright information.
+
+1.0.84.916 - 2024/12/23 09:16:39
+    1) Minor bug fixes, performance improvements, or setup changes.
+
 1.0.76.152 - 2024/12/14 08:33:02
     1) Minor bug fixes, performance improvements, or setup changes.
 
