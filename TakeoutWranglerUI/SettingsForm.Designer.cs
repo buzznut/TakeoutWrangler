@@ -61,6 +61,7 @@ namespace TakeoutWrangler
             comboBoxActions = new ComboBox();
             buttonCancel = new Button();
             buttonOkay = new Button();
+            checkBoxUseParallel = new CheckBox();
             groupBoxSource.SuspendLayout();
             groupBoxDestination.SuspendLayout();
             groupBoxAction.SuspendLayout();
@@ -78,7 +79,7 @@ namespace TakeoutWrangler
             // labelDestination
             // 
             labelDestination.AutoSize = true;
-            labelDestination.Location = new Point(14, 39);
+            labelDestination.Location = new Point(14, 36);
             labelDestination.Name = "labelDestination";
             labelDestination.Size = new Size(77, 15);
             labelDestination.TabIndex = 1;
@@ -87,7 +88,7 @@ namespace TakeoutWrangler
             // labelPattern
             // 
             labelPattern.AutoSize = true;
-            labelPattern.Location = new Point(11, 94);
+            labelPattern.Location = new Point(11, 88);
             labelPattern.Name = "labelPattern";
             labelPattern.Size = new Size(151, 15);
             labelPattern.TabIndex = 5;
@@ -177,9 +178,9 @@ namespace TakeoutWrangler
             groupBoxDestination.Controls.Add(labelDestination);
             groupBoxDestination.Controls.Add(textBoxDestination);
             groupBoxDestination.Controls.Add(labelPattern);
-            groupBoxDestination.Location = new Point(12, 271);
+            groupBoxDestination.Location = new Point(12, 281);
             groupBoxDestination.Name = "groupBoxDestination";
-            groupBoxDestination.Size = new Size(680, 133);
+            groupBoxDestination.Size = new Size(680, 120);
             groupBoxDestination.TabIndex = 2;
             groupBoxDestination.TabStop = false;
             groupBoxDestination.Text = "Target";
@@ -188,7 +189,7 @@ namespace TakeoutWrangler
             // 
             textBoxMediaFolderDescription.BorderStyle = BorderStyle.None;
             textBoxMediaFolderDescription.Font = new Font("Segoe UI", 9F, FontStyle.Italic);
-            textBoxMediaFolderDescription.Location = new Point(173, 72);
+            textBoxMediaFolderDescription.Location = new Point(173, 66);
             textBoxMediaFolderDescription.Name = "textBoxMediaFolderDescription";
             textBoxMediaFolderDescription.ReadOnly = true;
             textBoxMediaFolderDescription.Size = new Size(485, 16);
@@ -199,7 +200,7 @@ namespace TakeoutWrangler
             // textBoxDestinationPattern
             // 
             textBoxDestinationPattern.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
-            textBoxDestinationPattern.Location = new Point(170, 91);
+            textBoxDestinationPattern.Location = new Point(170, 85);
             textBoxDestinationPattern.Name = "textBoxDestinationPattern";
             textBoxDestinationPattern.Size = new Size(298, 23);
             textBoxDestinationPattern.TabIndex = 6;
@@ -208,7 +209,7 @@ namespace TakeoutWrangler
             // 
             labelDestinationRootFolderDescription.AutoSize = true;
             labelDestinationRootFolderDescription.Font = new Font("Segoe UI", 9F, FontStyle.Italic);
-            labelDestinationRootFolderDescription.Location = new Point(96, 19);
+            labelDestinationRootFolderDescription.Location = new Point(96, 16);
             labelDestinationRootFolderDescription.Name = "labelDestinationRootFolderDescription";
             labelDestinationRootFolderDescription.Size = new Size(221, 15);
             labelDestinationRootFolderDescription.TabIndex = 0;
@@ -217,7 +218,7 @@ namespace TakeoutWrangler
             // buttonDestinationDialog
             // 
             buttonDestinationDialog.Anchor = AnchorStyles.Top | AnchorStyles.Right;
-            buttonDestinationDialog.Location = new Point(647, 36);
+            buttonDestinationDialog.Location = new Point(647, 33);
             buttonDestinationDialog.Name = "buttonDestinationDialog";
             buttonDestinationDialog.Size = new Size(27, 23);
             buttonDestinationDialog.TabIndex = 3;
@@ -228,7 +229,7 @@ namespace TakeoutWrangler
             // textBoxDestination
             // 
             textBoxDestination.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
-            textBoxDestination.Location = new Point(96, 36);
+            textBoxDestination.Location = new Point(96, 33);
             textBoxDestination.Name = "textBoxDestination";
             textBoxDestination.Size = new Size(545, 23);
             textBoxDestination.TabIndex = 2;
@@ -236,6 +237,7 @@ namespace TakeoutWrangler
             // groupBoxAction
             // 
             groupBoxAction.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+            groupBoxAction.Controls.Add(checkBoxUseParallel);
             groupBoxAction.Controls.Add(textBoxActionDescription);
             groupBoxAction.Controls.Add(checkBoxList);
             groupBoxAction.Controls.Add(comboBoxVerbosity);
@@ -244,7 +246,7 @@ namespace TakeoutWrangler
             groupBoxAction.Controls.Add(comboBoxActions);
             groupBoxAction.Location = new Point(12, 134);
             groupBoxAction.Name = "groupBoxAction";
-            groupBoxAction.Size = new Size(680, 131);
+            groupBoxAction.Size = new Size(680, 142);
             groupBoxAction.TabIndex = 1;
             groupBoxAction.TabStop = false;
             groupBoxAction.Text = "Actions";
@@ -254,7 +256,7 @@ namespace TakeoutWrangler
             textBoxActionDescription.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
             textBoxActionDescription.BorderStyle = BorderStyle.None;
             textBoxActionDescription.Font = new Font("Segoe UI", 9F, FontStyle.Italic);
-            textBoxActionDescription.Location = new Point(84, 77);
+            textBoxActionDescription.Location = new Point(84, 90);
             textBoxActionDescription.Multiline = true;
             textBoxActionDescription.Name = "textBoxActionDescription";
             textBoxActionDescription.Size = new Size(587, 44);
@@ -266,7 +268,7 @@ namespace TakeoutWrangler
             checkBoxList.AutoSize = true;
             checkBoxList.Checked = true;
             checkBoxList.CheckState = CheckState.Checked;
-            checkBoxList.Location = new Point(82, 22);
+            checkBoxList.Location = new Point(82, 35);
             checkBoxList.Name = "checkBoxList";
             checkBoxList.Size = new Size(174, 19);
             checkBoxList.TabIndex = 4;
@@ -277,7 +279,7 @@ namespace TakeoutWrangler
             // 
             comboBoxVerbosity.DropDownStyle = ComboBoxStyle.DropDownList;
             comboBoxVerbosity.FormattingEnabled = true;
-            comboBoxVerbosity.Location = new Point(323, 46);
+            comboBoxVerbosity.Location = new Point(323, 59);
             comboBoxVerbosity.Name = "comboBoxVerbosity";
             comboBoxVerbosity.Size = new Size(121, 23);
             comboBoxVerbosity.TabIndex = 3;
@@ -285,7 +287,7 @@ namespace TakeoutWrangler
             // labelVerbosity
             // 
             labelVerbosity.AutoSize = true;
-            labelVerbosity.Location = new Point(254, 50);
+            labelVerbosity.Location = new Point(254, 63);
             labelVerbosity.Name = "labelVerbosity";
             labelVerbosity.Size = new Size(58, 15);
             labelVerbosity.TabIndex = 2;
@@ -294,7 +296,7 @@ namespace TakeoutWrangler
             // labelActions
             // 
             labelActions.AutoSize = true;
-            labelActions.Location = new Point(23, 50);
+            labelActions.Location = new Point(23, 63);
             labelActions.Name = "labelActions";
             labelActions.Size = new Size(50, 15);
             labelActions.TabIndex = 0;
@@ -304,7 +306,7 @@ namespace TakeoutWrangler
             // 
             comboBoxActions.DropDownStyle = ComboBoxStyle.DropDownList;
             comboBoxActions.FormattingEnabled = true;
-            comboBoxActions.Location = new Point(82, 46);
+            comboBoxActions.Location = new Point(82, 59);
             comboBoxActions.Name = "comboBoxActions";
             comboBoxActions.Size = new Size(121, 23);
             comboBoxActions.TabIndex = 1;
@@ -332,6 +334,16 @@ namespace TakeoutWrangler
             buttonOkay.Text = "OK";
             buttonOkay.UseVisualStyleBackColor = true;
             buttonOkay.Click += buttonOkay_Click;
+            // 
+            // checkBoxUseParallel
+            // 
+            checkBoxUseParallel.AutoSize = true;
+            checkBoxUseParallel.Location = new Point(82, 13);
+            checkBoxUseParallel.Name = "checkBoxUseParallel";
+            checkBoxUseParallel.Size = new Size(303, 19);
+            checkBoxUseParallel.TabIndex = 6;
+            checkBoxUseParallel.Text = "Run in parallel - uses more memory for performance";
+            checkBoxUseParallel.UseVisualStyleBackColor = true;
             // 
             // SettingsForm
             // 
@@ -388,5 +400,6 @@ namespace TakeoutWrangler
         private TextBox textBoxActionDescription;
         private CheckBox checkBoxList;
         private TextBox textBoxMediaFolderDescription;
+        private CheckBox checkBoxUseParallel;
     }
 }

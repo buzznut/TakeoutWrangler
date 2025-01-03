@@ -5,6 +5,7 @@
 // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 // <@$&< copyright end >&$@>
 
+using LibGit2Sharp;
 using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
@@ -27,7 +28,8 @@ internal static class Program
         "sign",
         "cert",
         "pwd",
-        "company"
+        "company",
+        "git"
     ];
     private static string isccexe;
     private static EnumerationOptions eo;
@@ -37,7 +39,6 @@ internal static class Program
     private static void Main(string[] args)
     {
         Console.WriteLine(nameof(BuildSetups));
-        List<string> helpReasons = new List<string>();
         bool showHelp = false;
 
         eo = new EnumerationOptions
@@ -84,11 +85,31 @@ internal static class Program
 
         if (!showHelp)
         {
+            string git = commands.GetCommand("git");
+            if (!string.IsNullOrEmpty(git))
+            {
+                try
+                {
+                    // checking if git repo is valid
+                    using (Repository repo = new Repository(git))
+                    {
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($">> Error << 'Git' was specified but: \"{ex.Message}\"");
+                    showHelp = true;
+                }
+            }
+        }
+
+        if (!showHelp)
+        {
             string url = commands.GetCommand("url");
             showHelp |= string.IsNullOrEmpty(url);
             if (!showHelp)
             {
-                commands.SetCommand("url", url + '/');
+                commands.SetCommand("url", $"{url}/");
             }
         }
 
@@ -185,36 +206,37 @@ internal static class Program
         if (showHelp)
         {
             Console.WriteLine();
-            Console.WriteLine("usage: " + nameof(BuildSetups) + " -args=file -root=folder -extra=folder -changes=file -setup=*setup.exe");
-            Console.WriteLine("    -auto=*update.xml -change=*changelog.txt -url=my.url -publish=folder -sign=text -cert=file");
-            Console.WriteLine("    -pwd=file -company=text");
+            Console.WriteLine($"usage: {nameof(BuildSetups)} -args=file -root=folder -extra=folder -changes=file -setup=*setup.exe");
+            Console.WriteLine( "    -auto=*update.xml -change=*changelog.txt -url=my.url -publish=folder -sign=text -cert=file");
+            Console.WriteLine( "    -pwd=file -company=text");
             Console.WriteLine();
-            Console.WriteLine("where:");
+            Console.WriteLine( "where:");
             Console.WriteLine();
-            Console.WriteLine("  root    : Path to root folder of the source code tree. Folder must exist.");
-            Console.WriteLine("  setup   : Filter for finding setup executables.");
-            Console.WriteLine("  master  : Name of master set of changes to be applied to auto update change log files.");
-            Console.WriteLine("  auto    : Filter for finding auto update xml files.");
-            Console.WriteLine("  change  : Filter for finding auto update change log files.");
-            Console.WriteLine("  url     : URL path to the auto update data files.");
-            Console.WriteLine("  publish : Folder path to place all the files (changelog, update xml, setup executables). Folder must exist.");
-            Console.WriteLine("  sign    : Comma separated list of folders to sign files or @value for a file with folder values.");
-            Console.WriteLine("  cert    : PFX Cert file to sign executables with.");
-            Console.WriteLine("  pwd     : Text file with the Cert password.");
-            Console.WriteLine("  company : Company name.");
+            Console.WriteLine( "  root    : Path to root folder of the source code tree. Folder must exist.");
+            Console.WriteLine( "  setup   : Filter for finding setup executables.");
+            Console.WriteLine( "  master  : Name of master set of changes to be applied to auto update change log files.");
+            Console.WriteLine( "  auto    : Filter for finding auto update xml files.");
+            Console.WriteLine( "  change  : Filter for finding auto update change log files.");
+            Console.WriteLine( "  git     : Optional: path to git repository to use git comments with change log files.");
+            Console.WriteLine( "  url     : URL path to the auto update data files.");
+            Console.WriteLine( "  publish : Folder path to place all the files (changelog, update xml, setup executables). Folder must exist.");
+            Console.WriteLine( "  sign    : Comma separated list of folders to sign files or @value for a file with folder values.");
+            Console.WriteLine( "  cert    : PFX Cert file to sign executables with.");
+            Console.WriteLine( "  pwd     : Text file with the Cert password.");
+            Console.WriteLine( "  company : Company name.");
             Console.WriteLine();
-            Console.WriteLine("optional:");
+            Console.WriteLine( "optional:");
             Console.WriteLine();
-            Console.WriteLine("  args    : A text file with the commandline parameters - values are overriden commandline.");
-            Console.WriteLine("  extra   : A folder of file content to copy to publish folder.");
+            Console.WriteLine( "  args    : A text file with the commandline parameters - values are overriden commandline.");
+            Console.WriteLine( "  extra   : A folder of file content to copy to publish folder.");
             Console.WriteLine();
-            Console.WriteLine("notes:");
+            Console.WriteLine( "notes:");
             Console.WriteLine();
-            Console.WriteLine(" 1) Inno Setup must be installed");
-            Console.WriteLine(" 2) Use the single tick \"'\" character to surround arguments with spaces)");
-            Console.WriteLine(" 3) Args are prefixed with '/' or '-' characters.");
-            Console.WriteLine(" 4) All files and folders must be explicitly pathed");
-            Console.WriteLine(" 5) $[root] may start any file or folder path");
+            Console.WriteLine( " 1) Inno Setup must be installed");
+            Console.WriteLine( " 2) Use the single tick \"'\" character to surround arguments with spaces)");
+            Console.WriteLine( " 3) Args are prefixed with '/' or '-' characters.");
+            Console.WriteLine( " 4) All files and folders must be explicitly pathed");
+            Console.WriteLine( " 5) $[root] may start any file or folder path");
             Console.WriteLine();
             return;
         }
@@ -225,7 +247,31 @@ internal static class Program
             Console.WriteLine($"  {key} = '{commands.GetCommand(key) ?? "null"}'");
         }
 
-        bool success = ProcessAll(DateTime.Now);
+        ProcessAll(DateTime.Now);
+    }
+
+    private static CommitInfo[] ReadGit(string git)
+    {
+        try
+        {
+            List<CommitInfo> gitCommitMessages = new List<CommitInfo>();
+
+            using (Repository repo = new Repository(git))
+            {
+                foreach (Commit commit in repo.Commits)
+                {
+                    // arranged newest to oldest
+                    gitCommitMessages.Add(new CommitInfo { Id = commit.Id.ToString(), Message = commit.Message.Trim() });
+                }
+            }
+
+            return gitCommitMessages.ToArray();
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine($">> Error << Could not read git repository. \"{e.Message}\"");
+            return null;
+        }
     }
 
     private static void ParseStrings(string text, HashSet<string> strings, HashSet<string> files)
@@ -334,6 +380,12 @@ internal static class Program
             if (string.IsNullOrEmpty(projectDir)) continue;
 
             string bin = Path.Combine(projectDir, "bin", "Release");
+            if (!Directory.Exists(bin))
+            {
+                Console.WriteLine($">> Error << Could not find directory: \"{bin}\"");
+                return false;
+            }
+
             List<string> allAssemblies = Directory.EnumerateFiles(bin, "*.dll", eo).ToList();
             allAssemblies.AddRange(Directory.EnumerateFiles(bin, "*.exe", eo));
 
@@ -360,13 +412,25 @@ internal static class Program
             changeLines[name] = new List<string>();
         }
 
+        CommitInfo[] commits = null;
+        string git = commands.GetCommand("git");
+        if (!string.IsNullOrEmpty(git))
+        {
+            commits = ReadGit(git);
+            if (commits == null)
+            {
+                return false;
+            }
+        }
+
         if (changesFile != null)
         {
             const char sep = '=';
             const char lead = '+';
             const char used = '-';
 
-            string changesFileNew = changesFile + ".tmp";
+            HashSet<string> oldIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            string changesFileNew = $"{changesFile}.tmp";
             using (StreamWriter writer = new StreamWriter(changesFileNew))
             {
                 using (StreamReader reader = new StreamReader(changesFile))
@@ -380,6 +444,15 @@ internal static class Program
 
                         if (!text.StartsWith(lead) || !text.Contains(sep))
                         {
+                            int indexOfClose = text.IndexOf(')');
+                            if (text.StartsWith("-git(") && indexOfClose > 5)
+                            {
+                                string id = text.Substring(5, indexOfClose - 5);
+                                if (!string.IsNullOrEmpty(id))
+                                {
+                                    oldIds.Add(id);
+                                }
+                            }
                             writer.WriteLine(text);
                             continue;
                         }
@@ -402,7 +475,8 @@ internal static class Program
                         bool isAll = !string.IsNullOrEmpty(Array.Find(installerKeys, x => x.Equals("all", StringComparison.OrdinalIgnoreCase)));
                         if (isAll)
                         {
-                            foreach (string key in changeLines.Keys)
+                            string[] keys = changeLines.Keys.ToArray();
+                            foreach (string key in keys)
                             {
                                 changeLines[key].Add(text);
                             }
@@ -421,12 +495,29 @@ internal static class Program
                             }
                         }
 
-                        writer.WriteLine(used.ToString() + string.Join(',', installerKeys) + sep.ToString() + text);
+                        writer.WriteLine($"{used}{string.Join(',', installerKeys)}{sep}{text}");
+                    }
+
+                    // add commits (by default 'all')
+                    if (commits?.Length > 0)
+                    {
+                        foreach (CommitInfo commit in commits)
+                        {
+                            if (oldIds.Contains(commit.Id)) continue;
+
+                            string[] keys = changeLines.Keys.ToArray();
+                            foreach (string key in keys)
+                            {
+                                changeLines[key].Add(commit.Message);
+                            }
+
+                            writer.WriteLine($"-git({commit.Id})={commit.Message}");
+                        }
                     }
                 }
             }
 
-            File.Move(changesFile, changesFile + ".bak", true);
+            File.Move(changesFile, $"{changesFile}.bak", true);
             File.Move(changesFileNew, changesFile, true);
         }
 
@@ -488,35 +579,34 @@ internal static class Program
         return true;
     }
 
-    private static void SignAssembly(string filePath, Signing signing)
+    private static int SignAssembly(string filePath, Signing signing)
     {
+        int exitCode = -1;
         FileVersionInfo fvi = FileVersionInfo.GetVersionInfo(filePath);
-        if (fvi.CompanyName == null || signing.CompanyName == null || !fvi.CompanyName.Trim().Equals(signing.CompanyName.Trim(), StringComparison.OrdinalIgnoreCase)) return;
+        if (fvi.CompanyName == null || signing.CompanyName == null || !fvi.CompanyName.Trim().Equals(signing.CompanyName.Trim(), StringComparison.OrdinalIgnoreCase)) return 0;
 
         try
         {
-            X509Certificate cert = X509Certificate.CreateFromSignedFile(filePath);
+            _ = X509Certificate.CreateFromSignedFile(filePath);
             Console.WriteLine($"Already signed: \"{filePath}\"");
             //already signed - skip this one
-            return;
+            return 0;
         }
-        catch (CryptographicException ce)
+        catch (CryptographicException)
         {
-            string msg = ce.Message;
         }
         catch (Exception ex)
         {
-            Console.WriteLine(">> Error << " + ex.Message);
-            return;
+            Console.WriteLine($">> Error << {ex.Message}");
+            return 2;
         }
 
         // sign the assembly
         Console.WriteLine($"Signing: \"{filePath}\"");
 
         string name = Path.GetFileNameWithoutExtension(filePath);
-        string outPath = Path.Combine(Path.GetTempPath(), name + ".txt");
+        string outPath = Path.Combine(Path.GetTempPath(), $"{name}.txt");
 
-        int exitCode = 0;
         using (Output outputData = new Output(outPath))
         {
             ProcessStartInfo processStartInfo = new ProcessStartInfo
@@ -542,6 +632,8 @@ internal static class Program
                 exitCode = process.ExitCode;
             }
         }
+
+        return exitCode;
     }
 
     private static bool ProcessFileData(FileData fileData, List<string> changeLines, DateTime now, Signing signing)
@@ -644,7 +736,7 @@ internal static class Program
             {
                 case "url":
                 {
-                    node.InnerText = commands.GetCommand("url") + Path.GetFileName(fileData.FilePath);
+                    node.InnerText = $"{commands.GetCommand("url")}{Path.GetFileName(fileData.FilePath)}";
                     break;
                 }
 
@@ -656,7 +748,7 @@ internal static class Program
 
                 case "changelog":
                 {
-                    node.InnerText = commands.GetCommand("url") + Path.GetFileName(changeLog);
+                    node.InnerText = $"{commands.GetCommand("url")}{Path.GetFileName(changeLog)}";
                     break;
                 }
             }
@@ -670,7 +762,7 @@ internal static class Program
         File.Copy(updateXmlFile, Path.Combine(outputPath, xmlFileName), true);
 
         Console.WriteLine($"Updating changelog: {changeLog}");
-        using (FileStream newChangeLog = File.Create(changeLog + ".tmp"))
+        using (FileStream newChangeLog = File.Create($"{changeLog}.tmp"))
         {
             string[] lines = File.ReadLines(changeLog).ToArray();
 
@@ -704,13 +796,15 @@ internal static class Program
 
         if (File.Exists(changeLog))
         {
-            File.Move(changeLog, changeLog + ".delete");
+            File.Move(changeLog, $"{changeLog}.delete");
         }
 
-        File.Move(changeLog + ".tmp", changeLog, true);
-        if (File.Exists(changeLog + ".delete"))
+        File.Move($"{changeLog}.tmp", changeLog, true);
+
+        string deleteName = $"{changeLog}.delete";
+        if (File.Exists(deleteName))
         {
-            File.Delete(changeLog + ".delete");
+            File.Delete(deleteName);
         }
 
         string changeLogName = Path.GetFileName(changeLog);
@@ -791,7 +885,7 @@ internal static class Program
         Console.WriteLine($"Compile: \"{file}\"");
 
         string name = Path.GetFileNameWithoutExtension(file);
-        string outPath = Path.Combine(Path.GetTempPath(), name + ".txt");
+        string outPath = Path.Combine(Path.GetTempPath(), $"{name}.txt");
 
         int exitCode = 0;
         using (Output outputData = new Output(outPath))
@@ -831,7 +925,7 @@ internal static class Program
 
     private static string GetLatestVersion(ICollection<string> assemblies)
     {
-        Version version = Version.Parse("0.0.0.0");
+        System.Version version = System.Version.Parse("0.0.0.0");
         string result = null;
 
         foreach (string assembly in assemblies)
@@ -841,7 +935,7 @@ internal static class Program
                 if (assembly.Contains("\\arm", StringComparison.OrdinalIgnoreCase)) continue;
 
                 FileVersionInfo fvi = FileVersionInfo.GetVersionInfo(assembly);
-                Version v = Version.Parse(fvi.ProductVersion ?? "0.0.0.0");
+                System.Version v = System.Version.Parse(fvi.ProductVersion ?? "0.0.0.0");
                 if (v > version)
                 {
                     result = assembly;
@@ -927,7 +1021,7 @@ public class Commands
         if (args == null || args.Count == 0) return;
         HashSet<string> pathSubs = pathSubstitutes?.Length > 0 ? new HashSet<string>(pathSubstitutes, StringComparer.OrdinalIgnoreCase) : null;
 
-        string allArgs = string.Join(' ', args) + " ";
+        string allArgs = $"{string.Join(' ', args)} ";
         ParseArgText(allArgs, true, pathSubs);
 
         string argFile = GetCommand("args");
@@ -1036,7 +1130,7 @@ public class Commands
             string v = value?.Trim();
             if (v == null) return false;
 
-            if (c == "?") c = "help";
+            if (string.Compare(c, "?") == 0) c = "help";
 
             if (pathSubs?.Count > 0 && pathSubs.Contains(c) && !v.Contains("$["))
             {
@@ -1071,4 +1165,10 @@ public class Commands
     }
 
     public ICollection<string> Keys { get { return cmds.Keys; } }
+}
+
+public class CommitInfo
+{
+    public string Id { get; set; }
+    public string Message { get; set; }
 }

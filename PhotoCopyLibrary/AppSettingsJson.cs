@@ -6,6 +6,7 @@
 // <@$&< copyright end >&$@>
 
 using Newtonsoft.Json;
+using System.Diagnostics;
 
 namespace PhotoCopyLibrary;
 
@@ -39,11 +40,14 @@ public class AppSettingsJson
         try
         {
             string output = JsonConvert.SerializeObject(jsonObj, Formatting.Indented);
-            return output != originalJsonText;
+            return string.Compare(output, originalJsonText, StringComparison.Ordinal) != 0;
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            var foo = ex;
+            if (Debugger.IsAttached)
+            {
+                Debugger.Break();
+            }
             throw;
         }
     }
@@ -53,16 +57,16 @@ public class AppSettingsJson
         try
         {
             string output = JsonConvert.SerializeObject(jsonObj, Formatting.Indented);
-            if (output != originalJsonText)
+            if (string.Compare(output, originalJsonText, StringComparison.OrdinalIgnoreCase) != 0)
             {
                 File.WriteAllText(filePath, output);
                 originalJsonText = output;
             }
             return true;
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            var foo = ex;
+            if (Debugger.IsAttached) { Debugger.Break(); }
             return false;
         }
     }
@@ -76,9 +80,9 @@ public class AppSettingsJson
         {
             SetValueRecursively($"{root}:{sectionPathKey}", jsonObj, value);
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            var foo = ex;
+            if (Debugger.IsAttached) { Debugger.Break(); }
             throw;
         }
     }

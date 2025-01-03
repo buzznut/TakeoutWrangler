@@ -110,7 +110,7 @@ public class Configs
         foreach (ConfigParam pType in pTypes.Values)
         {
             string value = settings.GetSetting(pType.Name, notFoundText);
-            if (value != notFoundText)
+            if (string.Compare(value, notFoundText, StringComparison.Ordinal) != 0)
             {
                 switch (pType.PType)
                 {
@@ -234,7 +234,7 @@ public class Configs
 
     public ConfigResult GetBool(string key, out bool value)
     {
-        bool gotValue = values.TryGetValue(key, out object valueObject);
+        values.TryGetValue(key, out object valueObject);
         pTypes.TryGetValue(key, out ConfigParam pType);
 
         if (pType == null)

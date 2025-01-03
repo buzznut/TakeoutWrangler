@@ -258,7 +258,7 @@ static internal class Program
         try
         {
             bakFile = MakeBackupFileName(file);
-            newFile = file + ".tmp";
+            newFile = $"{file}.tmp";
             string[] lines = File.ReadAllLines(file);
             int copyrightHeader = -1;
             int copyrightFooter = -1;
@@ -435,10 +435,10 @@ static internal class Program
         string[] parts = headerText.Trim().Split(':');
         if (parts.Length > 0)
         {
-            result = parts[0] != newHash;
+            result = string.Compare(parts[0], newHash) != 0;
             if (parts.Length > 1)
             {
-                result |= parts[1] != version;
+                result |= string.Compare(parts[1], version, StringComparison.OrdinalIgnoreCase) != 0;
             }
         }
         return result;
@@ -514,7 +514,7 @@ static internal class Program
                 string c = cmd.Trim();
                 string v = value?.Trim();
 
-                if (c == "?") c = "help";
+                if (string.Compare(c, "?") == 0) c = "help";
                 commands[c] = v;
             }
         }

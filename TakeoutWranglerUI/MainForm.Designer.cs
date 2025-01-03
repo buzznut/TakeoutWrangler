@@ -226,7 +226,7 @@ namespace TakeoutWrangler
             buttonRun.TabIndex = 2;
             buttonRun.Text = "Execute";
             buttonRun.UseVisualStyleBackColor = true;
-            buttonRun.Click += buttonRun_Click;
+            buttonRun.Click += buttonRun_ClickAsync;
             // 
             // printDialog
             // 

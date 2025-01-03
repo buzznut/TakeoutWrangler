@@ -17,6 +17,7 @@ public partial class SettingsForm : Form
     public string Filter { get; set; }
     public string Pattern { get; set; }
     public bool ListOnly { get; set; }
+    public bool Parallel { get; set; }
     public LoggingVerbosity Logging { get; set; }
     public PhotoCopierActions Behavior { get; set; }
     public PhotoCopier PhotoCopierSession { get; set; }
@@ -39,6 +40,7 @@ public partial class SettingsForm : Form
         comboBoxVerbosity.SelectedItem = LoggingVerbosity.Verbose;
 
         checkBoxList.Checked = ListOnly;
+        checkBoxUseParallel.Checked = Parallel;
 
         SetActionDescription();
 
@@ -61,6 +63,7 @@ public partial class SettingsForm : Form
         comboBoxVerbosity.SelectedIndex = comboBoxVerbosity.FindStringExact(Logging.ToString());
 
         checkBoxList.Checked = ListOnly;
+        checkBoxUseParallel.Checked = Parallel;
 
         SetActionDescription();
 
@@ -72,16 +75,16 @@ public partial class SettingsForm : Form
         bool changed = false;
         string reason;
 
-        changed |= Source != textBoxSource.Text;
+        changed |= string.Compare(Source, textBoxSource.Text, StringComparison.OrdinalIgnoreCase) != 0;
         Source = textBoxSource.Text;
 
-        changed |= Filter != textBoxFileFilter.Text;
+        changed |= string.Compare(Filter, textBoxFileFilter.Text, StringComparison.OrdinalIgnoreCase) != 0;
         Filter = textBoxFileFilter.Text;
 
-        changed |= Destination != textBoxDestination.Text;
+        changed |= string.Compare(Destination, textBoxDestination.Text, StringComparison.OrdinalIgnoreCase) != 0;
         Destination = textBoxDestination.Text;
 
-        changed |= Pattern != textBoxDestinationPattern.Text;
+        changed |= string.Compare(Pattern, textBoxDestinationPattern.Text, StringComparison.OrdinalIgnoreCase) != 0;
         Pattern = textBoxDestinationPattern.Text;
 
         PhotoCopierActions behavior = (comboBoxActions.SelectedItem as PhotoCopierActions?).GetValueOrDefault(PhotoCopierActions.Copy);
@@ -94,6 +97,9 @@ public partial class SettingsForm : Form
 
         changed |= ListOnly != checkBoxList.Checked;
         ListOnly = checkBoxList.Checked;
+
+        changed |= Parallel != checkBoxUseParallel.Checked;
+        Parallel = checkBoxUseParallel.Checked;
 
         if (changed)
         {

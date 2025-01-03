@@ -188,7 +188,7 @@ public partial class MainForm : Form
 
     private PhotoCopier HandleConfiguration(string[] args)
     {
-        PhotoCopier photoCopier = new PhotoCopier(OutputHandler, IssueHandler, StatusHandler) { UseParallel = true };
+        PhotoCopier photoCopier = new PhotoCopier(OutputHandler, StatusHandler);
         configs = photoCopier.GetConfiguration();
 
         try
@@ -203,11 +203,12 @@ public partial class MainForm : Form
             configs.GetString("logging", out string loggingString);
             configs.GetString("action", out string actionString);
             configs.GetBool("listonly", out bool listOnly);
+            configs.GetBool("parallel", out bool parallel);
 
             if (!Enum.TryParse(actionString, true, out PhotoCopierActions behavior)) behavior = PhotoCopierActions.Copy;
             if (!Enum.TryParse(loggingString, true, out LoggingVerbosity logging)) logging = LoggingVerbosity.Verbose;
 
-            ReturnCode result = photoCopier.Initialize(nameof(TakeoutWrangler), false, sourceDir, destinationDir, behavior, pattern, fileFilter, logging, listOnly);
+            ReturnCode result = photoCopier.Initialize(nameof(TakeoutWrangler), false, sourceDir, destinationDir, behavior, pattern, fileFilter, logging, listOnly, parallel);
             if (result != ReturnCode.Success)
             {
                 buttonRun.Enabled = false;
@@ -216,7 +217,7 @@ public partial class MainForm : Form
         }
         catch (Exception ex)
         {
-            IssueHandler(ex.Message, ErrorCode.Error);
+            OutputHandler(ex.Message, ErrorCode.Error);
         }
 
         return photoCopier;
@@ -234,12 +235,7 @@ public partial class MainForm : Form
         }
     }
 
-    private static void OutputHandler(string output = null)
-    {
-        IssueHandler(output ?? string.Empty, ErrorCode.Success);
-    }
-
-    private static void IssueHandler(string output, ErrorCode errorCode)
+    private static void OutputHandler(string output = null, ErrorCode errorCode = ErrorCode.Success)
     {
         output ??= string.Empty;
 
@@ -303,6 +299,7 @@ public partial class MainForm : Form
         configs.GetString("filter", out string fileFilter);
         configs.GetString("logging", out string loggingString);
         configs.GetBool("listonly", out bool listOnly);
+        configs.GetBool("parallel", out bool parallel);
 
         if (!Enum.TryParse(actionString, true, out PhotoCopierActions behavior)) behavior = PhotoCopierActions.Copy;
         if (!Enum.TryParse(loggingString, true, out LoggingVerbosity logging)) logging = LoggingVerbosity.Verbose;
@@ -316,6 +313,7 @@ public partial class MainForm : Form
             Filter = fileFilter,
             Logging = logging,
             ListOnly = listOnly,
+            Parallel = parallel,
             PhotoCopierSession = copier
         };
 
@@ -335,9 +333,10 @@ public partial class MainForm : Form
             fileFilter = settingsForm.Filter;
             logging = settingsForm.Logging;
             listOnly = settingsForm.ListOnly;
+            parallel = settingsForm.Parallel;
 
             listBoxView.Rows.Clear();
-            PhotoCopier photoCopier = new PhotoCopier(OutputHandler, IssueHandler, StatusHandler) { UseParallel = true };
+            PhotoCopier photoCopier = new PhotoCopier(OutputHandler, StatusHandler);
 
             configs.SetString("action", behavior.ToString());
             configs.SetString("source", source);
@@ -346,13 +345,14 @@ public partial class MainForm : Form
             configs.SetString("logging", logging.ToString());
             configs.SetString("filter", fileFilter);
             configs.SetBool("listonly", listOnly);
+            configs.SetBool("parallel", parallel);
 
             if (result == DialogResult.Yes)
             {
                 configs.SaveSettings(settings);
             }
 
-            ReturnCode okay = photoCopier.Initialize(nameof(TakeoutWrangler), false, source, destination, behavior, pattern, fileFilter, logging, listOnly);
+            ReturnCode okay = photoCopier.Initialize(nameof(TakeoutWrangler), false, source, destination, behavior, pattern, fileFilter, logging, listOnly, parallel);
             if (okay == ReturnCode.Success)
             {
                 copier = photoCopier;
@@ -396,7 +396,7 @@ public partial class MainForm : Form
         }
     }
 
-    private async void buttonRun_Click(object sender, EventArgs e)
+    private async void buttonRun_ClickAsync(object sender, EventArgs e)
     {
         if (copier == null) return;
         timerView.Start();
@@ -407,9 +407,18 @@ public partial class MainForm : Form
         }
         else
         {
-            ReturnCode code = await copier.RunAsync();
-            OutputHandler();
-            IssueHandler($"Results: {code}", ErrorCodeFromReturnCode(code));
+            try
+            {
+                ReturnCode code = await copier.RunAsync().ConfigureAwait(false);
+                OutputHandler();
+                OutputHandler($"Results: return code={code}", ErrorCodeFromReturnCode(code));
+                OutputHandler();
+            }
+            catch (Exception ex)
+            {
+                if (Debugger.IsAttached) Debugger.Break();
+                OutputHandler(ex.Message, ErrorCode.Error);
+            }
         }
     }
 
@@ -486,9 +495,8 @@ public partial class MainForm : Form
                 printDocument.Print();
             }
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            var exception = ex;
         }
     }
 
@@ -600,7 +608,7 @@ public partial class MainForm : Form
         {
             foreach (int index in Enumerable.Range(0, listBoxView.Rows.Count))
             {
-                //listBoxView.SetSelected(index, true);
+                listBoxView.Rows[index].Selected = true;
             }
         }
     }
@@ -647,26 +655,10 @@ public partial class MainForm : Form
         viewer.ShowDialog();
     }
 
-    private void listBoxView_DrawItem(object sender, DrawItemEventArgs e)
-    {
-        {
-            if (e.Index < 0) return;
-
-            DataGridViewRow item = listBoxView.Rows[e.Index];
-            if (item != null)
-            {
-                e.DrawBackground();
-                //e.Graphics.DrawString(item.Message, e.Font ?? listBoxView.Font, new SolidBrush(item.ItemColor), e.Bounds);
-                e.DrawFocusRectangle();
-            }
-        }
-    }
-
-    private void listBoxView_CellPainting(object sender, DataGridViewCellPaintingEventArgs e)
+    private void listBoxView_CellPainting(object _, DataGridViewCellPaintingEventArgs e)
     {
         if (e.RowIndex < 0 || e.Graphics == null) return;
         DataGridViewRow row = listBoxView.Rows[e.RowIndex];
-        DataGridViewCell cell = row.Cells[0];
         backBrush ??= new SolidBrush(BackColor);
 
         Font cellFont = e.CellStyle?.Font ?? listBoxView.Font;
@@ -690,7 +682,7 @@ public class PageLoadData
     public int Index { get; set; }
 }
 
-public class  ListBoxItem
+public class ListBoxItem
 {
     public string Message { get; set; }
     public Color ItemColor { get; set; }

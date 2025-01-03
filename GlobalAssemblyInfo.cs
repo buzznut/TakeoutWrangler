@@ -18,7 +18,7 @@ using System.Reflection;
 //      Revision
 //
 
-[assembly: AssemblyVersion("1.0.84.1222")]
-[assembly: AssemblyFileVersion("1.0.84.1222")]
-[assembly: AssemblyInformationalVersion("1.0.84.1222")]
+[assembly: AssemblyVersion("1.0.95.852")]
+[assembly: AssemblyFileVersion("1.0.95.852")]
+[assembly: AssemblyInformationalVersion("1.0.95.852")]
 

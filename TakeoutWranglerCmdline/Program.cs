@@ -14,7 +14,7 @@ internal static class Program
 {
     static int Main(string[] args)
     {
-        PhotoCopier photoCopier = new PhotoCopier(OutputHandler, IssueHandler, StatusHandler);
+        PhotoCopier photoCopier = new PhotoCopier(OutputHandler, StatusHandler);
         Configs configs = photoCopier.GetConfiguration();
 
         configs.LoadAppSettings();
@@ -28,17 +28,18 @@ internal static class Program
         configs.GetString("logging", out string loggingString);
         configs.GetString("action", out string actionString);
         configs.GetBool("listonly", out bool listOnly);
+        configs.GetBool("parallel", out bool parallel);
 
         if (!Enum.TryParse(actionString, true, out PhotoCopierActions behavior)) behavior = PhotoCopierActions.Copy;
         if (!Enum.TryParse(loggingString, true, out LoggingVerbosity logging)) logging = LoggingVerbosity.Verbose;
 
-        ReturnCode result = photoCopier.Initialize(nameof(TakeoutWranglerCmdline), showHelp, sourceDir, destinationDir, behavior, pattern, fileFilter, logging, listOnly);
+        ReturnCode result = photoCopier.Initialize(nameof(TakeoutWranglerCmdline), showHelp, sourceDir, destinationDir, behavior, pattern, fileFilter, logging, listOnly, parallel);
         if (result != ReturnCode.Success) return (int)result;
 
         return (int)photoCopier.RunAsync().GetAwaiter().GetResult();
     }
 
-    private static void IssueHandler(string output, ErrorCode errorCode)
+    private static void OutputHandler(string output = null, ErrorCode errorCode = ErrorCode.Success)
     {
         if (output != null)
         {
@@ -49,11 +50,6 @@ internal static class Program
         }
         else
             Console.WriteLine();
-    }
-
-    private static void OutputHandler(string output = null)
-    {
-        IssueHandler(output ?? string.Empty, ErrorCode.Success);
     }
 
     private static void StatusHandler(string output = null)

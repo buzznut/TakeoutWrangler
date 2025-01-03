@@ -3,8 +3,22 @@
 // Lines that do not start with a '+' are ignored.
 // All lines added to changelog file are trimed.
 // Allowed prefixes: "all=" or the "project=" name are allowed. Project names may be separated by commas.
+// --
+// If Git commits are included then previously included git commits are included as
+// "-git(id)=CommitText" to prevent multiple inclusions.
 
 -all=Added more help. Changed path validation messages. Color console output for warnings and errors. Added month naming and path handling. Other bug fixes and updates.
 -all=Added some documentation. Doing some work in parallel. Added HelpViewer for showing PDF documentation.\
 -all=Folder name changes. Help and instructions display and documents.
 -all=Added "Reorder". Fixed remaining date parsing issues. Added code to set date on EXIF file formats (jpeg, tiff, png). Several UI tweaks. Added copyright information.
+-all=Fix a couple startup issues.
+-git(6746d6accdd4b12e1bdd54091d31a8efc3c45440)=Added more help. Changed path validation messages. Color console output for warnings and errors. Added month naming and path handling. Other bug fixes and updates.
+-git(f70ec89881cf5b5e3f4df9ff7c52d51a0a8fd472)=Updated the install.
+-git(114e8cbf202e921b4aa3305c09b289b0b8ac6231)=Added some documentation. Doing some work in parallel. Added HelpViewer for showing PDF documentation.
+-git(f2cd912bc8c7402b9bc0f2f2260d4e55ca3d2456)=Folder name changes. Help and instructions display and documents.
+-git(00c29dc4057d1ecb6833557a96379e48b6415382)=Folder name changes. Help and instructions form. Help and instructions documents.
+-git(c8d4c2d94d53e14338d098670207b1e47de55d34)=Added "Reorder". Fixed remaining date parsing issues. Added code to set date on EXIF file formats (jpeg, tiff, png). Several UI tweaks. Added copyright information.
+-git(310a2b2864edc4711667bc717a865f3e3617812c)=Change some menu text. Fix a settings bug.
+-git(c50ca0576fa316783d8af88ad150c4d543793e44)=Build installer and bump version number
+-git(166cbe77ab75ec09f773533053902c84c905c1e4)=Changed name of template.appsettings.json to default.appsettings.json to reflect what the file's purpose is.
+-git(dfb2bca29dbbb41a9fb0891a48f1eb6547a8011c)=Meshing of local git repository and github

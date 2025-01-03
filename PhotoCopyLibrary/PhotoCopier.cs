@@ -25,20 +25,19 @@ using System.Text;
 
 namespace PhotoCopyLibrary;
 
-public delegate void HandleOutput(string output = null);
-public delegate void IssueOutput(string output, ErrorCode errorCode);
+public delegate void HandleOutput(string output = null, ErrorCode errorCode = ErrorCode.Success);
+public delegate void StatusUpdate(string status);
 
 public class PhotoCopier
 {
-    public bool UseParallel;
-
+    private const string RetryText = "(Retry)";
     private int canceled;
     private int zipFileCount;
-    private int progressCount;
     private int errorCount;
     private int skipCount;
     private int duplicateCount;
     private int totalCount;
+    private int progressCount;
 
     private string sourceDir;
     private string destDir;
@@ -47,12 +46,11 @@ public class PhotoCopier
     private PhotoCopierActions behavior = PhotoCopierActions.Copy;
     private LoggingVerbosity logging = LoggingVerbosity.Verbose;
     private bool listOnly = true;
+    private bool parallel;
 
     private readonly char[] separator = new char[] { '.' };
-    private readonly HandleOutput outputHandler = DummyHandler;
-    private readonly IssueOutput warningHandler = DummyIssueHandler;
-    private readonly IssueOutput errorHandler = DummyIssueHandler;
-    private readonly HandleOutput statusHandler = DummyHandler;
+    private readonly HandleOutput outputHandler = DummyOutput;
+    private readonly StatusUpdate statusUpdate = DummyStatus;
     private readonly ConcurrentBag<ZipArchive> archives = new ConcurrentBag<ZipArchive>();
     private readonly ConcurrentDictionary<string, MediaInfo> mediaKeys = new ConcurrentDictionary<string, MediaInfo>(StringComparer.OrdinalIgnoreCase);
     private readonly ConcurrentQueue<MediaInfo> retryMediaKeys = new ConcurrentQueue<MediaInfo>();
@@ -66,30 +64,37 @@ public class PhotoCopier
         new ConfigParam { Name = "help", Synonyms = ["?"], Default = false, PType = ParamType.Bool },
         new ConfigParam { Name = "action", Default = nameof(PhotoCopierActions.Copy), PType = ParamType.String },
         new ConfigParam { Name = "pattern", Default = "$y_$m", PType = ParamType.String },
-        new ConfigParam { Name = "listonly", Synonyms = ["list"], Default = true, PType = ParamType.Bool }
+        new ConfigParam { Name = "listonly", Synonyms = ["list"], Default = true, PType = ParamType.Bool },
+        new ConfigParam { Name = "parallel", Synonyms = ["fast"], Default = false, PType = ParamType.Bool }
     };
 
-    private static void DummyIssueHandler(string output, ErrorCode errorCode)
+    private static void DummyOutput(string output = null, ErrorCode errorCode = ErrorCode.Success)
     {
-        // do nothing with the string
     }
 
-    private static void DummyHandler(string output = null)
+    private static void DummyStatus(string status)
     {
-        DummyIssueHandler(output ?? string.Empty, ErrorCode.Success);
     }
 
     private PhotoCopier() { }
 
-    public PhotoCopier(HandleOutput output, IssueOutput issue, HandleOutput status)
+    public PhotoCopier(HandleOutput output, StatusUpdate status)
     {
         outputHandler = output;
-        statusHandler = status;
-        warningHandler = issue;
-        errorHandler = issue;
+        statusUpdate = status;
     }
 
-    public ReturnCode Initialize(string appName, bool help, string sourceDir, string destDir, PhotoCopierActions behavior, string pattern, string fileFilter, LoggingVerbosity logging, bool listOnly)
+    public ReturnCode Initialize(
+        string appName,
+        bool help,
+        string sourceDir,
+        string destDir,
+        PhotoCopierActions behavior,
+        string pattern,
+        string fileFilter,
+        LoggingVerbosity logging,
+        bool listOnly,
+        bool parallel)
     {
         try
         {
@@ -98,8 +103,8 @@ public class PhotoCopier
             List<string> reasons = new List<string>();
 
             // trim trailing backslashes
-            if (sourceDir.EndsWith('\\')) sourceDir = sourceDir.Substring(0, sourceDir.Length - 1);
-            if (destDir.EndsWith('\\')) destDir = destDir.Substring(0, destDir.Length - 1);
+            if ((sourceDir?.EndsWith('\\')).GetValueOrDefault()) sourceDir = sourceDir?.Substring(0, sourceDir.Length - 1);
+            if ((destDir?.EndsWith('\\')).GetValueOrDefault()) destDir = destDir?.Substring(0, destDir.Length - 1);
 
             // validate paths
             help |= !Configs.ValidatePath(sourceDir, "Source", reasons);
@@ -114,47 +119,50 @@ public class PhotoCopier
                 outputHandler();
                 outputHandler($"where:");
                 outputHandler();
-                outputHandler($"  source=path        folder that contains the takeout zip file(s).");
-                outputHandler($"                     (default=null");
+                outputHandler($" source=path        folder that contains the takeout zip file(s).");
+                outputHandler($"                    (default=null");
                 outputHandler();
-                outputHandler($"  destination=path   folder where to put photo contents (files and subfolders)");
-                outputHandler($"                     (default=null");
+                outputHandler($" destination=path   folder where to put photo contents (files and subfolders)");
+                outputHandler($"                    (default=null");
                 outputHandler();
-                outputHandler($"  action=option      option is one of {PhotoCopierActions.Copy}, {PhotoCopierActions.Overwrite} or {PhotoCopierActions.Reorder}.");
-                outputHandler($"                     (default={PhotoCopierActions.Copy}");
+                outputHandler($" action=option      option is one of {PhotoCopierActions.Copy}, {PhotoCopierActions.Overwrite} or {PhotoCopierActions.Reorder}.");
+                outputHandler($"                    (default={PhotoCopierActions.Copy}");
                 outputHandler();
-                outputHandler($"                     {PhotoCopierActions.Copy} media files to destination.");
-                outputHandler($"                     {PhotoCopierActions.Reorder} media files only if pattern is different.");
+                outputHandler($"                    {PhotoCopierActions.Copy} media files to destination.");
+                outputHandler($"                    {PhotoCopierActions.Reorder} media files only if pattern is different.");
                 outputHandler();
-                outputHandler($"  list=value         value is true to list only, false to perform actions.");
-                outputHandler($"                     example: action=true would only show potential errors or actions without changing destination.");
+                outputHandler($" list=value         value is true to list only, false to perform actions.");
+                outputHandler($"                    example: action=true would only show potential errors or actions without changing destination.");
                 outputHandler();
-                outputHandler($" loggin=verbosity    {LoggingVerbosity.Quiet}, {LoggingVerbosity.Change}, or {LoggingVerbosity.Verbose}. {LoggingVerbosity.Quiet}=minimal output, {LoggingVerbosity.Change}=minimal+changed content, {LoggingVerbosity.Verbose}=all");
-                outputHandler($"                     (default={LoggingVerbosity.Change})");
+                outputHandler($" parallel=value     value is true to run in parallel for faster performance, false to run sequentially. Parallem mode uses more memory.");
+                outputHandler($"                    example: action=true would only show potential errors or actions without changing destination.");
                 outputHandler();
-                outputHandler($" pattern=text        Destination folder name pattern. (default=$y_$m");
+                outputHandler($" loggin=verbosity   {LoggingVerbosity.Quiet}, {LoggingVerbosity.Change}, or {LoggingVerbosity.Verbose}. {LoggingVerbosity.Quiet}=minimal output, {LoggingVerbosity.Change}=minimal+changed content, {LoggingVerbosity.Verbose}=all");
+                outputHandler($"                    (default={LoggingVerbosity.Change})");
                 outputHandler();
-                outputHandler($"                     example: if date-time, is March 27, 2024 at 3:33PM");
+                outputHandler($" pattern=text       Destination folder name pattern. (default=$y_$m");
                 outputHandler();
-                outputHandler($"                              $y = 4 digit year. ex: 2024");
-                outputHandler($"                              $m = 2 digit month. ex: 03");
-                outputHandler($"                              $M = month name. ex: March");
-                outputHandler($"                              $d = 2 digit day. ex: 27");
-                outputHandler($"                              $h = 2 digit hour. ex: 15 (24 hours per day)");
+                outputHandler($"                    example: if date-time, is March 27, 2024 at 3:33PM");
                 outputHandler();
-                outputHandler($"                              '$y\\Sam-$M($d)' \"root\\2024\\Sam-March(3)\"");
+                outputHandler($"                       $y = 4 digit year. ex: 2024");
+                outputHandler($"                       $m = 2 digit month. ex: 03");
+                outputHandler($"                       $M = month name. ex: March");
+                outputHandler($"                       $d = 2 digit day. ex: 27");
+                outputHandler($"                       $h = 2 digit hour. ex: 15 (24 hours per day)");
                 outputHandler();
-                outputHandler($" filter=text         photo archive file filter. (default='takeout-*.zip')");
+                outputHandler($"                       '$y\\Sam-$M($d)' \"root\\2024\\Sam-March(3)\"");
+                outputHandler();
+                outputHandler($" filter=text        photo archive file filter. (default='takeout-*.zip')");
                 outputHandler();
 
                 if (reasons.Count > 0)
                 {
-                    warningHandler("Issues: ", ErrorCode.Warning);
+                    outputHandler("Issues: ", ErrorCode.Warning);
 
                     int index = 1;
                     foreach (string reason in reasons)
                     {
-                        warningHandler($"  {index++}. {reason}", ErrorCode.Warning);
+                        outputHandler($"  {index++}. {reason}", ErrorCode.Warning);
                     }
 
                     outputHandler();
@@ -163,7 +171,7 @@ public class PhotoCopier
                 return ReturnCode.HadIssues;
             }
 
-            string[] sourceFiles = System.IO.Directory.GetFiles(sourceDir, fileFilter);
+            string[] sourceFiles = System.IO.Directory.GetFiles(sourceDir ?? ".\\", fileFilter);
             if (sourceFiles == null || sourceFiles.Length == 0)
             {
                 outputHandler($"No source files found. sourceDir:\"{sourceDir}\", file filter:\"{fileFilter}\"");
@@ -195,6 +203,9 @@ public class PhotoCopier
             this.listOnly = listOnly;
             outputHandler($" ListOnly: {listOnly}");
 
+            this.parallel = parallel;
+            outputHandler($" Parallel: {parallel}");
+
             outputHandler();
 
             return (int)ReturnCode.Success;
@@ -223,40 +234,42 @@ public class PhotoCopier
             skipCount = 0;
             errorCount = 0;
             zipFileCount = 0;
-            progressCount = 0;
             duplicateCount = 0;
             totalCount = 0;
+            progressCount = 0;
 
             IsRunning = true;
  
             if (behavior == PhotoCopierActions.Copy || behavior == PhotoCopierActions.Overwrite)
             {
-                await ProcessDirAsync(sourceDir, destDir, fileFilter);
+                await ProcessDirAsync(sourceDir, destDir, fileFilter).ConfigureAwait(false);
             }
             else if (behavior == PhotoCopierActions.Reorder)
             {
                 Interlocked.Exchange(ref totalCount, System.IO.Directory.EnumerateFiles(destDir, "*.*", SearchOption.AllDirectories).Count());
-                await ReorderDirAsync(destDir, pattern, destDir);
+                await ReorderDirAsync(destDir, pattern, destDir, false).ConfigureAwait(false);
             }
             else
             {
-                outputHandler("Invalid behavior");
+                outputHandler("Invalid behavior", ErrorCode.Error);
                 return ReturnCode.Error;
             }
 
             return Interlocked.Add(ref canceled, 0) > 0 ? ReturnCode.Canceled : ReturnCode.Success;
         }
-        catch (OperationCanceledException oce)
+        catch (OperationCanceledException)
         {
-            OperationCanceledException foo = oce;
-            outputHandler("Canceled");
+            outputHandler("Canceled", ErrorCode.Warning);
             return ReturnCode.Canceled;
         }
         catch (Exception ex)
         {
-            if (Debugger.IsAttached) Debugger.Break();
-            Interlocked.Increment(ref errorCount);
-            outputHandler(ex.ToString());
+            if (Interlocked.Add(ref canceled, 0) == 0)
+            {
+                if (Debugger.IsAttached) Debugger.Break();
+                Interlocked.Increment(ref errorCount);
+                outputHandler(ex.ToString(), ErrorCode.Error);
+            }
             return ReturnCode.Error;
         }
         finally
@@ -271,19 +284,23 @@ public class PhotoCopier
 
             outputHandler();
             outputHandler($"elapsed={stopwatch.Elapsed}, filter=\"{fileFilter}\"");
-            outputHandler($"{behavior}: zipFiles={zipFileCount}, newItems={progressCount}, duplicateFiles={duplicateCount}, skippedFolders={skipCount}, errors={errorCount}");
+            outputHandler($"{behavior}: zipFiles={zipFileCount}, newItems={totalCount}, duplicateFiles={duplicateCount}, skippedFolders={skipCount}, errors={errorCount}");
 
             IsRunning = false;
         }
     }
 
-    private async Task ReorderDirAsync(string dir, string pattern, string root)
+    private async Task ReorderDirAsync(string dir, string pattern, string root, bool isRetry)
     {
+        int progress = 0;
+        
         if (logging != LoggingVerbosity.Quiet) outputHandler($"Reordering dir:{Path.Combine(".", dir)}");
+        int total = Interlocked.Add(ref totalCount, 0);
 
         foreach (string mediaFullPath in System.IO.Directory.EnumerateFiles(dir, "*.*", SearchOption.TopDirectoryOnly))
         {
             if (Interlocked.Add(ref canceled, 0) > 0) break;
+            progress++;
 
             string mediaFileName = string.Empty;
             string sourceDir = dir.Replace(root, string.Empty, StringComparison.OrdinalIgnoreCase);
@@ -298,8 +315,8 @@ public class PhotoCopier
                 {
                     if (Debugger.IsAttached) Debugger.Break();
                     Interlocked.Increment(ref errorCount);
-                    errorHandler($"Error:{Progress} Invalid file type", ErrorCode.Error);
-                    statusHandler($"{Progress}");
+                    outputHandler($"{(isRetry ? RetryText : "")}Error:{Progress(progress, total)} Invalid file type", ErrorCode.Error);
+                    statusUpdate($"{Progress(progress, total)}");
                     return;
                 }
 
@@ -314,13 +331,15 @@ public class PhotoCopier
 
                 if (mediaDate != null && !hasMediaMetaDate)
                 {
-                    if (fileType == "jpeg" || fileType == "tiff" || fileType == "png")
+                    if (string.Compare(fileType, "jpeg", StringComparison.OrdinalIgnoreCase) == 0 ||
+                        string.Compare(fileType, "tiff", StringComparison.OrdinalIgnoreCase) == 0 ||
+                        string.Compare(fileType, "png", StringComparison.OrdinalIgnoreCase) == 0)
                     {
                         if (!listOnly)
                         {
                             ExifData exif = new ExifData(mediaFullPath);
-                            exif.SetDateTaken(mediaDate.Value);
-                            exif.SetTagValue(ExifTag.DateTimeOriginal, mediaDate.Value);
+                            _ = exif.SetDateTaken(mediaDate.Value);
+                            _ = exif.SetTagValue(ExifTag.DateTimeOriginal, mediaDate.Value);
                             exif.Save();
                         }
                     }
@@ -330,8 +349,7 @@ public class PhotoCopier
                     }
                 }
 
-                Interlocked.Increment(ref progressCount);
-                string newFileDir = DirectoryNameFromDate(root, mediaDate, out targetDir);
+                string newFileDir = DirectoryNameFromDate(root, mediaDate, progress, total, hasMediaMetaDate, out targetDir);
                 if (newFileDir == null) continue;
 
                 string newFilePath = Path.Combine(newFileDir, mediaFileName);
@@ -341,9 +359,9 @@ public class PhotoCopier
                     Interlocked.Increment(ref skipCount);
                     if (logging == LoggingVerbosity.Verbose)
                     {
-                        outputHandler($"{Progress} Skipping duplicate folder:\"{Path.Combine(".", sourceDir)}\"");
+                        outputHandler($"{(isRetry ? RetryText : "")}{Progress(progress, total)} Skipping duplicate folder:\"{Path.Combine(".", sourceDir)}\"");
                     }
-                    statusHandler($"{Progress}");
+                    statusUpdate($"{Progress(progress, total)}");
                     continue;
                 }
 
@@ -351,8 +369,8 @@ public class PhotoCopier
                 {
                     if (Debugger.IsAttached) Debugger.Break();
                     Interlocked.Increment(ref errorCount);
-                    errorHandler($"Error:{Progress} New file dir should not be null", ErrorCode.Error);
-                    statusHandler($"{Progress}");
+                    outputHandler($"{(isRetry ? RetryText : "")}Error:{Progress(progress, total)} New file dir should not be null", ErrorCode.Error);
+                    statusUpdate($"{Progress(progress, total)}");
                     return;
                 }
 
@@ -363,21 +381,24 @@ public class PhotoCopier
                 }
 
                 string verb = listOnly ? "Would move" : "Moved";
-                if (logging != LoggingVerbosity.Quiet) outputHandler($"{Progress} {verb} file:\"{mediaFileName}\" to \"{Path.Combine(".", targetDir)}\"");
-                statusHandler($"{Progress}");
+                if (logging != LoggingVerbosity.Quiet) outputHandler($"{(isRetry ? RetryText : "")}{Progress(progress, total)} {verb} file:\"{mediaFileName}\" to \"{Path.Combine(".", targetDir)}\"");
+                statusUpdate($"{Progress(progress, total)}");
             }
             catch (Exception ex)
             {
-                if (Debugger.IsAttached) Debugger.Break();
-                Interlocked.Increment(ref errorCount);
-                errorHandler($"Error:{Progress} Could not move file:\"{mediaFileName}\" from \"{Path.Combine(".", sourceDir)}\" to \"{Path.Combine(".", targetDir)}\". Reason={ex.Message}", ErrorCode.Error);
+                if (Interlocked.Add(ref canceled, 0) == 0)
+                {
+                    if (Debugger.IsAttached) Debugger.Break();
+                    Interlocked.Increment(ref errorCount);
+                    outputHandler($"Error:{Progress(progress, total)} Could not move file:\"{mediaFileName}\" from \"{Path.Combine(".", sourceDir)}\" to \"{Path.Combine(".", targetDir)}\". Reason={ex.Message}", ErrorCode.Error);
+                }
             }
         }
 
         foreach (string mediaFile in System.IO.Directory.EnumerateDirectories(dir, "*.*", SearchOption.TopDirectoryOnly))
         {
             if (Interlocked.Add(ref canceled, 0) > 0) break;
-            await ReorderDirAsync(Path.Combine(dir, mediaFile), pattern, root);
+            await ReorderDirAsync(Path.Combine(dir, mediaFile), pattern, root, isRetry).ConfigureAwait(false);
         }
 
         if (!System.IO.Directory.EnumerateFileSystemEntries(dir).Any())
@@ -386,7 +407,10 @@ public class PhotoCopier
         }
     }
 
-    private string Progress => $"{Interlocked.Add(ref progressCount, 0)}/{Interlocked.Add(ref totalCount, 0)}";
+    private string Progress(int progress, int total)
+    {
+        return $"{progress}/{total}";
+    }
 
     private string GetDateFromMediaStream(Stream mediaStream, out DateTime? mediaDate)
     {
@@ -588,23 +612,38 @@ public class PhotoCopier
             FileInfo fileInfo = new FileInfo(entity);
             if (!fileInfo.Attributes.HasFlag(FileAttributes.Directory))
             {
-                await ProcessZipAsync(entity);
-            }
-
-            DirectoryInfo directoryInfo = new DirectoryInfo(entity);
-            if (directoryInfo.Attributes.HasFlag(FileAttributes.Directory))
-            {
-            //    await ProcessDirAsync(Path.Combine(src, entity), Path.Combine(dst, entity), fileFilter);
+                await ProcessZipAsync(entity).ConfigureAwait(false);
             }
         }
 
-        foreach (string key in mediaKeys.Where(x => x.Value.EntryName == null).Select(x => x.Key).ToArray())
+        string[] keysToRemove = mediaKeys.Where(x => x.Value.EntryName == null).Select(x => x.Key).ToArray();
+        foreach (string key in keysToRemove)
         {
-            mediaKeys.TryRemove(key, out _);
+            if (!mediaKeys.TryRemove(key, out _))
+            {
+                if (Debugger.IsAttached) Debugger.Break();
+            }
         }
+
+        if (mediaKeys.IsEmpty) return;
 
         Interlocked.Exchange(ref totalCount, mediaKeys.Count);
-        await ProcessMediaAsync(dst);
+
+        if (parallel)
+        {
+            outputHandler("Running in parallel - entry counts may be out of order");
+            await Task.Run(() => Parallel.ForEach(mediaKeys.Keys, entryKey => ProcessEntry(entryKey, dst, false))).ConfigureAwait(false);
+        }
+        else
+        {
+            outputHandler("Running sequentially");
+            foreach (string entryKey in mediaKeys.Keys)
+            {
+                if (Interlocked.Add(ref canceled, 0) > 0) break;
+                await Task.Run(() => ProcessEntry(entryKey, dst, false)).ConfigureAwait(false);
+            }
+        }
+
         if (Interlocked.Add(ref canceled, 0) > 0)
         {
             return;
@@ -612,19 +651,39 @@ public class PhotoCopier
 
         mediaKeys.Clear();
 
-        while (Interlocked.Add(ref canceled, 0) == 0)
+        if (retryMediaKeys.Count > 0)
         {
-            int retryCount = retryMediaKeys.Count;
-            if (retryCount == 0) break;
+            progressCount = 0;
+            totalCount = retryMediaKeys.Count;
+            outputHandler($"Retrying {retryMediaKeys.Count} entries.");
 
-            while (retryCount > 0)
+            bool processed = false;
+            while (Interlocked.Add(ref canceled, 0) == 0)
             {
-                retryCount--;
-                retryMediaKeys.TryDequeue(out MediaInfo result);
-                if (result == null)
-                    continue;
+                if (retryMediaKeys.Count == 0) break;
 
-                mediaKeys[result.EntryKey] = result;
+                while (retryMediaKeys.TryDequeue(out MediaInfo result))
+                {
+                    mediaKeys[result.EntryKey] = result;
+                }
+
+                foreach (string key in mediaKeys.Keys)
+                {
+                    processed = true;
+                    await Task.Run(() => ProcessEntry(key, dst, true)).ConfigureAwait(false);
+                }
+
+                if (processed)
+                {
+                    // we did something so wait a bit and try to see if there are more retries
+                    Stopwatch timer = Stopwatch.StartNew();
+                    while (Interlocked.Add(ref canceled, 0) == 0 && timer.Elapsed < TimeSpan.FromSeconds(1))
+                    {
+                        Task.Delay(50).Wait();
+                    }
+
+                    processed = false;
+                }
             }
         }
     }
@@ -648,7 +707,6 @@ public class PhotoCopier
             }
 
             Dictionary<string, Dictionary<string, ZipArchiveEntry>> entries = new Dictionary<string, Dictionary<string, ZipArchiveEntry>>(StringComparer.OrdinalIgnoreCase);
-            HashSet<string> skipped = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
             foreach (ZipArchiveEntry entry in allEntries)
             {
@@ -660,7 +718,7 @@ public class PhotoCopier
                 if (path == null)
                 {
                     Interlocked.Increment(ref errorCount);
-                    errorHandler($"Error: root, {root} is not a directory. Reason=InvalidPath", ErrorCode.Error);
+                    outputHandler($"Error: root, {root} is not a directory. Reason=InvalidPath", ErrorCode.Error);
                     continue;
                 }
 
@@ -700,7 +758,6 @@ public class PhotoCopier
                     if (Interlocked.Add(ref canceled, 0) > 0) break;
 
                     ZipArchiveEntry archiveEntry = values[valueKey];
-                    string name = archiveEntry.FullName;
 
                     if (valueKey.EndsWith("json", StringComparison.OrdinalIgnoreCase))
                     {
@@ -730,11 +787,11 @@ public class PhotoCopier
         {
             if (Debugger.IsAttached) Debugger.Break();
             Interlocked.Increment(ref errorCount);
-            errorHandler($"Error: Could not process zipfile {zip}. Reason={ex.Message}", ErrorCode.Error);
+            outputHandler($"Error: Could not process zipfile {zip}. Reason={ex.Message}", ErrorCode.Error);
         }
     }
 
-    private string DirectoryNameFromDate(string root, DateTime? date, out string targetDir)
+    private string DirectoryNameFromDate(string root, DateTime? date, int progress, int total, bool isRetry, out string targetDir)
     {
         targetDir = "no-date";
 
@@ -758,14 +815,14 @@ public class PhotoCopier
         {
             if (Debugger.IsAttached) Debugger.Break();
             Interlocked.Increment(ref errorCount);
-            errorHandler($"Error:{Progress} Invalid target file path:\"{newFilePath ?? "null"}\"", ErrorCode.Error);
+            outputHandler($"{(isRetry ? RetryText : "")}Error:{Progress(progress, total)} Invalid target file path:\"{newFilePath ?? "null"}\"", ErrorCode.Error);
             return null;
         }
 
         return newFilePath;
     }
 
-    private string MonthName(int monthNumber)
+    private static string MonthName(int monthNumber)
     {
         CultureInfo culture = CultureInfo.CurrentCulture;
         DateTimeFormatInfo dtfi = culture.DateTimeFormat;
@@ -784,7 +841,7 @@ public class PhotoCopier
                 if (dictionaries == null)
                 {
                     Interlocked.Increment(ref errorCount);
-                    errorHandler($"Error: Could not deserialize object {jarray}. Reason=InvalidObject", ErrorCode.Error);
+                    outputHandler($"Error: Could not deserialize object {jarray}. Reason=InvalidObject", ErrorCode.Error);
                     continue;
                 }
 
@@ -947,70 +1004,49 @@ public class PhotoCopier
         return new Configs(paramTypes, true);
     }
 
-    private async Task ProcessMediaAsync(string dst)
-    {
-        if (mediaKeys.IsEmpty) return;
-
-        if (UseParallel)
-        {
-            await Task.Run(() => Parallel.ForEach(mediaKeys.Keys, entryKey => ProcessEntry(null, entryKey, dst)));
-        }
-        else
-        {
-            foreach (string entryKey in mediaKeys.Keys)
-            {
-                if (Interlocked.Add(ref canceled, 0) > 0) break;
-                await Task.Run(() => ProcessEntry(null, entryKey, dst));
-            }
-        }
-    }
-
-    private void ProcessEntry(ZipArchive archive, string entryKey, string dst)
+    private void ProcessEntry(string entryKey, string dst, bool isRetry)
     {
         if (Interlocked.Add(ref canceled, 0) > 0) return;
+        int total = Interlocked.Add(ref totalCount, 0);
 
-        if (!mediaKeys.TryGetValue(entryKey, out MediaInfo mediaInfo) || mediaInfo.EntryName == null)
+        bool foundEntry = mediaKeys.TryGetValue(entryKey, out MediaInfo mediaInfo);
+        int progress = Interlocked.Increment(ref progressCount);
+
+        if (!foundEntry || mediaInfo == null || mediaInfo.EntryName == null)
         {
             if (Debugger.IsAttached) Debugger.Break();
             Interlocked.Increment(ref errorCount);
-            errorHandler($"Error:{Progress} Invalid zip entry key: {entryKey}", ErrorCode.Error);
-            statusHandler($"{Progress}");
+            outputHandler($"{(isRetry ? RetryText : "")}Error:{Progress(progress, total)} Invalid zip entry key: {entryKey}", ErrorCode.Error);
+            statusUpdate($"{Progress(progress, total)}");
             return;
         }
 
-        bool mustDispose = false;
+        mediaInfo.ProgressId = progress;
+
+        ZipArchive archive = null;
         ZipArchiveEntry entry = null;
-        List<Stream> streams = new List<Stream>();
+        List<IDisposable> disposables = new List<IDisposable>();
         FileStream fileStream = null;
         Stream zipStream = null;
         DateTime? mediaDate = null;
         ExifData exif = null;
-        string mediaFileName = string.Empty;
         string targetDir;
 
         try
         {
-            // D:\Test\Pictures\2016_02\0208160756.jpg
-            // D:\Test\Pictures\2019_06\Resized952019060995184157.jpg"
-
-            if (archive == null)
-            {
-                archive = ZipFile.OpenRead(mediaInfo.ArchivePath);
-                mustDispose = true;
-            }
+            archive = ZipFile.OpenRead(mediaInfo.ArchivePath);
+            disposables.Add(archive);
 
             entry = archive.GetEntry(mediaInfo.EntryName);
             if (entry == null) return;
 
             zipStream = GetStream(entry.Length);
-            streams.Add(zipStream);
+            disposables.Add(zipStream);
 
             using (Stream entryStream = entry.Open())
             {
                 entryStream?.CopyTo(zipStream);
             }
-
-            Interlocked.Increment(ref progressCount);
 
             // 1. get date from media metadata
             string fileType = GetDateFromMediaStream(zipStream, out mediaDate);
@@ -1019,8 +1055,8 @@ public class PhotoCopier
             {
                 if (Debugger.IsAttached) Debugger.Break();
                 Interlocked.Increment(ref errorCount);
-                errorHandler($"Error:{Progress} Invalid file type", ErrorCode.Error);
-                statusHandler($"{Progress}");
+                outputHandler($"{(isRetry ? RetryText : "")}Error:{Progress(progress, total)} Invalid file type", ErrorCode.Error);
+                statusUpdate($"{Progress(progress, total)}");
                 return;
             }
 
@@ -1039,7 +1075,9 @@ public class PhotoCopier
 
             if (mediaDate != null && !hasMediaMetaDate)
             {
-                if (fileType == "jpeg" || fileType == "tiff" || fileType == "png")
+                if (string.Compare(fileType, "jpeg", StringComparison.OrdinalIgnoreCase) == 0 ||
+                    string.Compare(fileType, "tiff", StringComparison.OrdinalIgnoreCase) == 0 ||
+                    string.Compare(fileType, "png", StringComparison.OrdinalIgnoreCase) == 0)
                 {
                     zipStream.Seek(0, SeekOrigin.Begin);
                     exif = new ExifData(zipStream);
@@ -1047,7 +1085,7 @@ public class PhotoCopier
                     exif.SetTagValue(ExifTag.DateTimeOriginal, mediaDate.Value);
 
                     Stream newZipStream = GetStream(entry.Length + 1024);
-                    streams.Add(newZipStream);
+                    disposables.Add(newZipStream);
 
                     zipStream.Seek(0, SeekOrigin.Begin);
                     exif.Save(zipStream, newZipStream);
@@ -1061,7 +1099,7 @@ public class PhotoCopier
 
             string filePath = null;
 
-            string folderPath = DirectoryNameFromDate(dst, mediaDate, out targetDir);
+            string folderPath = DirectoryNameFromDate(dst, mediaDate, progress, total, hasMediaMetaDate, out targetDir);
 
             if (!listOnly) System.IO.Directory.CreateDirectory(folderPath);
             filePath = Path.Combine(folderPath, entry.Name);
@@ -1085,12 +1123,12 @@ public class PhotoCopier
                 {
                     if (Debugger.IsAttached) Debugger.Break();
                     Interlocked.Increment(ref errorCount);
-                    errorHandler($"Error:{Progress} Could not open existing file: {filePath}", ErrorCode.Error);
-                    statusHandler($"{Progress}");
+                    outputHandler($"{(isRetry ? RetryText : "")}Error:{Progress(progress, total)} Could not open existing file: {filePath}", ErrorCode.Error);
+                    statusUpdate($"{Progress(progress, total)}");
                     return;
                 }
 
-                streams.Add(fileStream);
+                disposables.Add(fileStream);
 
                 fileStream.Seek(0, SeekOrigin.Begin);
                 fileHash = SHA512.Create().ComputeHash(fileStream);
@@ -1102,8 +1140,8 @@ public class PhotoCopier
                 {
                     // don't copy since everything is the same - name & content
                     string text = listOnly ? "List(duplicate)" : "Duplicate";
-                    if (logging == LoggingVerbosity.Verbose) outputHandler($"{Progress} {text}:\"{entry.Name}\" in \"{Path.Combine(".", targetDir)}\"");
-                    statusHandler($"{Progress}");
+                    if (logging == LoggingVerbosity.Verbose) outputHandler($"{(isRetry ? RetryText : "")}{Progress(progress, total)} {text}:\"{entry.Name}\" in \"{Path.Combine(".", targetDir)}\"");
+                    statusUpdate($"{Progress(progress, total)}");
                     Interlocked.Increment(ref duplicateCount);
                     return;
                 }
@@ -1124,7 +1162,7 @@ public class PhotoCopier
                     }
 
                     FileStream testStream = new FileStream(filePath, FileMode.Open, FileAccess.ReadWrite, FileShare.None, 4096, true);
-                    streams.Add(testStream);
+                    disposables.Add(testStream);
 
                     fileHash = SHA256.Create().ComputeHash(testStream);
 
@@ -1132,9 +1170,9 @@ public class PhotoCopier
                     if (zipHash.SequenceEqual(fileHash))
                     {
                         // don't copy existing media
-                        if (logging == LoggingVerbosity.Verbose) outputHandler($"{Progress} Skipping duplicate file:\"{entry.Name}\" in \"{Path.Combine(".", targetDir, fname)}\"");
-                        statusHandler($"{Progress}");
                         Interlocked.Increment(ref duplicateCount);
+                        if (logging == LoggingVerbosity.Verbose) outputHandler($"{(isRetry ? RetryText : "")}{Progress(progress, total)} Skipping duplicate file:\"{entry.Name}\" in \"{Path.Combine(".", targetDir, fname)}\"");
+                        statusUpdate($"{Progress(progress, total)}");
                         return;
                     }
 
@@ -1154,20 +1192,20 @@ public class PhotoCopier
                     {
                         if (Debugger.IsAttached) Debugger.Break();
                         Interlocked.Increment(ref errorCount);
-                        errorHandler($"Error:{Progress} Could not open or create file: {filePath}", ErrorCode.Error);
-                        statusHandler($"{Progress}");
+                        outputHandler($"{(isRetry ? RetryText : "")}Error:{Progress(progress, total)} Could not open or create file: {filePath}", ErrorCode.Error);
+                        statusUpdate($"{Progress(progress, total)}");
                         return;
                     }
 
-                    streams.Add(fileStream);
+                    disposables.Add(fileStream);
                 }
 
                 zipStream.Seek(0, SeekOrigin.Begin);
                 fileStream.Seek(0, SeekOrigin.Begin);
 
                 string verb = listOnly ? "Would copy" : "Copied";
-                if (logging != LoggingVerbosity.Quiet) outputHandler($"{Progress} {verb} file:\"{entry.Name}\" to \"{Path.Combine(".", targetDir, fname)}\"");
-                statusHandler($"{Progress}");
+                if (logging != LoggingVerbosity.Quiet) outputHandler($"{(isRetry ? RetryText : "")}{Progress(progress, total)} {verb} file:\"{entry.Name}\" to \"{Path.Combine(".", targetDir, fname)}\"");
+                statusUpdate($"{Progress(progress, total)}");
 
                 if (exif == null)
                 {
@@ -1191,33 +1229,28 @@ public class PhotoCopier
 
             if (Debugger.IsAttached) Debugger.Break();
             Interlocked.Increment(ref errorCount);
-            errorHandler($"Error:{Progress} Could not extract {entryKey}. Reason={ioex.Message}", ErrorCode.Error);
-            statusHandler($"{Progress}");
+            outputHandler($"{(isRetry ? RetryText : "")}Error:{Progress(progress, total)} Could not extract {entryKey}. Reason={ioex.Message}", ErrorCode.Error);
+            statusUpdate($"{Progress(progress, total)}");
         }
         catch (Exception ex)
         {
             if (Debugger.IsAttached) Debugger.Break();
             Interlocked.Increment(ref errorCount);
-            errorHandler($"Error:{Progress} Could not extract {entryKey}. Reason={ex.Message}", ErrorCode.Error);
-            statusHandler($"{Progress}");
+            outputHandler($"{(isRetry ? RetryText : "")}Error:{Progress(progress, total)} Could not extract {entryKey}. Reason={ex.Message}", ErrorCode.Error);
+            statusUpdate($"{Progress(progress, total)}");
         }
         finally
         {
-            foreach (Stream stream in streams)
+            foreach (IDisposable item in disposables)
             {
-                stream.Dispose();
-            }
-
-            if (mustDispose)
-            {
-                archive.Dispose();
+                item?.Dispose();
             }
         }
 
         return;
     }
 
-    private Stream GetStream(long length)
+    private static Stream GetStream(long length)
     {
         if (length >= 1 * 1024 * 1024)
         {
@@ -1274,7 +1307,7 @@ public class PhotoCopier
             {
                 sb.Append(Convert.ToChar('A' + rnd.Next() % 26));
             }
-            string testFile = Path.Combine(folderPath, sb.ToString() + ".tmp");
+            string testFile = Path.Combine(folderPath, $"{sb}.tmp");
             using (FileStream stream = new FileStream(testFile, FileMode.Create, FileAccess.ReadWrite, FileShare.None, 4096, FileOptions.DeleteOnClose))
             {
                 byte test = 200;

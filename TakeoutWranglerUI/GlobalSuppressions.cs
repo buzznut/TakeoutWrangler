@@ -17,7 +17,7 @@ using System.Diagnostics.CodeAnalysis;
 [assembly: SuppressMessage("Interoperability", "CA1416:Validate platform compatibility", Justification = "<Pending>", Scope = "member", Target = "~M:TakeoutWrangler.SettingsForm.radioButtonList_CheckedChanged(System.Object,System.EventArgs)")]
 [assembly: SuppressMessage("Interoperability", "CA1416:Validate platform compatibility", Justification = "<Pending>", Scope = "member", Target = "~M:TakeoutWrangler.SettingsForm.SelectFolder(System.String)~System.String")]
 [assembly: SuppressMessage("Interoperability", "CA1416:Validate platform compatibility", Justification = "<Pending>", Scope = "member", Target = "~M:TakeoutWrangler.SettingsForm.SettingsForm_Load(System.Object,System.EventArgs)")]
-[assembly: SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "<Pending>", Scope = "member", Target = "~M:TakeoutWrangler.MainForm.buttonRun_Click(System.Object,System.EventArgs)")]
+[assembly: SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "<Pending>", Scope = "member", Target = "~M:TakeoutWrangler.MainForm.buttonRun_ClickAsync(System.Object,System.EventArgs)")]
 [assembly: SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "<Pending>", Scope = "member", Target = "~M:TakeoutWrangler.MainForm.clearToolStripMenuItem_Click(System.Object,System.EventArgs)")]
 [assembly: SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "<Pending>", Scope = "member", Target = "~M:TakeoutWrangler.MainForm.exitToolStripMenuItem_Click(System.Object,System.EventArgs)")]
 [assembly: SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "<Pending>", Scope = "member", Target = "~M:TakeoutWrangler.MainForm.listBoxView_SizeChanged(System.Object,System.EventArgs)")]
