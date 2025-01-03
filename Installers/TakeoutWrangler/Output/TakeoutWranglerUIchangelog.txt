@@ -1,3 +1,6 @@
+1.0.95.873 - 2025/01/03 08:33:20
+    1) Minor bug fixes, performance improvements, or setup changes.
+
 1.0.95.852 - 2025/01/03 08:12:50
     1) Added more help. Changed path validation messages. Color console output for warnings and errors. Added month naming and path handling. Other bug fixes and updates.
     2) Updated the install.
