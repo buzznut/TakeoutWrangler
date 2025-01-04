@@ -22,6 +22,9 @@
 -git(c50ca0576fa316783d8af88ad150c4d543793e44)=Build installer and bump version number
 -git(166cbe77ab75ec09f773533053902c84c905c1e4)=Changed name of template.appsettings.json to default.appsettings.json to reflect what the file's purpose is.
 -git(dfb2bca29dbbb41a9fb0891a48f1eb6547a8011c)=Meshing of local git repository and github
+-git(7be6105d4a29fc0eff8f2974a65e63a5880bb3c5)=Setup built
+-git(2238535250190c82849d63de5951e225c464a410)=Change the installer to require admin - allows access to all folders for settings, and photo file creation.
+-git(efd0ad0c18e4addcd7c5033a7da9e45d2c4a1d9b)=Add "Check for update" menu item. Fix a bug with creating XML document not having the XML declaration line.
 -git(033c651d8d829f5be6808c8e8be06011d9e5a6d7)=Push latest round of changes to GitHub.
 -git(8b6aec7c91a633b8af2ea15877d69fe0396b8ad1)=Create installer for 1.0.95.873
 -git(5f0cfacf8cf2d7423904caae811a6b7c7cddf2c6)=Added git commit text to BuildSetups. Added 'parallel' option for performance. Improved progress counting. Fixed a retry problem for parallel processing. Minor textual changes and bug fixes.

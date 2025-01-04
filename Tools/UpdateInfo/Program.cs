@@ -498,22 +498,22 @@ internal static class Program
 
                         writer.WriteLine($"{used}{string.Join(',', installerKeys)}{sep}{text}");
                     }
+                }
 
-                    // add commits (by default 'all')
-                    if (commits?.Length > 0)
+                // add commits (by default 'all')
+                if (commits?.Length > 0)
+                {
+                    foreach (CommitInfo commit in commits)
                     {
-                        foreach (CommitInfo commit in commits)
+                        if (oldIds.Contains(commit.Id)) continue;
+
+                        string[] keys = changeLines.Keys.ToArray();
+                        foreach (string key in keys)
                         {
-                            if (oldIds.Contains(commit.Id)) continue;
-
-                            string[] keys = changeLines.Keys.ToArray();
-                            foreach (string key in keys)
-                            {
-                                changeLines[key].Add(commit.Message);
-                            }
-
-                            writer.WriteLine($"-git({commit.Id})={commit.Message}");
+                            changeLines[key].Add(commit.Message);
                         }
+
+                        writer.WriteLine($"-git({commit.Id})={commit.Message}");
                     }
                 }
             }

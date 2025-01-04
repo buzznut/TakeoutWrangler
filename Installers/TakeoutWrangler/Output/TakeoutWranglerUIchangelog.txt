@@ -1,3 +1,12 @@
+1.0.96.1088 - 2025/01/04 12:09:10
+    1) Setup built
+    2) Change the installer to require admin - allows access to all folders for settings, and photo file creation.
+    3) Add "Check for update" menu item. Fix a bug with creating XML document not having the XML declaration line.
+    4) Push latest round of changes to GitHub.
+    5) Create installer for 1.0.95.873
+    6) Added git commit text to BuildSetups. Added 'parallel' option for performance. Improved progress counting. Fixed a retry problem for parallel processing. Minor textual changes and bug fixes.
+    7) Don't save .bak files to git
+
 1.0.96.75 - 2025/01/03 07:16:08
     1) Minor bug fixes, performance improvements, or setup changes.
 

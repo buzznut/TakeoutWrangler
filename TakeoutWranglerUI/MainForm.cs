@@ -51,7 +51,7 @@ public partial class MainForm : Form
     private bool pagesLoaded;
     private readonly List<ListBoxItem> items = new List<ListBoxItem>();
     private SolidBrush backBrush;
-    private const string updateUrl = "https://github.com/buzznut/TakeoutWrangler/tree/master/Installers/TakeoutWrangler/Output";
+    private const string updateUrl = "https://raw.githubusercontent.com/buzznut/TakeoutWrangler/refs/heads/master/Installers/TakeoutWrangler/Output/TakeoutWranglerUIupdate.xml";
 
 
     private MainForm()
@@ -83,7 +83,12 @@ public partial class MainForm : Form
         StartPageResolve(0);
 
         AutoUpdater.CheckForUpdateEvent += UpdateCheckEvent;
+        AutoUpdater.ParseUpdateInfoEvent += ParseUpdateInfoEvent;
         this.args = args;
+    }
+
+    private void ParseUpdateInfoEvent(ParseUpdateInfoEventArgs args)
+    {
     }
 
     private void StartPageResolve(int index)
