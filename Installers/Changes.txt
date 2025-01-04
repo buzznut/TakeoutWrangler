@@ -29,3 +29,4 @@
 -git(8b6aec7c91a633b8af2ea15877d69fe0396b8ad1)=Create installer for 1.0.95.873
 -git(5f0cfacf8cf2d7423904caae811a6b7c7cddf2c6)=Added git commit text to BuildSetups. Added 'parallel' option for performance. Improved progress counting. Fixed a retry problem for parallel processing. Minor textual changes and bug fixes.
 -git(6027e8a1b6ed8c7b3f97890eaff07005c2a111e5)=Don't save .bak files to git
+-git(af89799548cb9cb6d4edeb8a9ac6947bd9611c9b)=Fix problems with GitHub url for retrieving autoupdate.net required information. Fix a small problem with BuildSetups not putting Git commit text into the change log.

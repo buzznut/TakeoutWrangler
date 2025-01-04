@@ -1,3 +1,9 @@
+1.0.96.1330 - 2025/01/04 04:19:37
+    1) Minor bug fixes, performance improvements, or setup changes.
+
+1.0.96.1318 - 2025/01/04 03:58:37
+    1) Fix problems with GitHub url for retrieving autoupdate.net required information. Fix a small problem with BuildSetups not putting Git commit text into the change log.
+
 1.0.96.1088 - 2025/01/04 12:09:10
     1) Setup built
     2) Change the installer to require admin - allows access to all folders for settings, and photo file creation.

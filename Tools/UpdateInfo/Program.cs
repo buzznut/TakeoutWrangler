@@ -10,7 +10,6 @@ using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
-using System.Windows.Controls;
 using System.Xml;
 
 namespace BuildSetups;
@@ -110,7 +109,10 @@ internal static class Program
             showHelp |= string.IsNullOrEmpty(url);
             if (!showHelp)
             {
-                commands.SetCommand("url", $"{url}/");
+                if (!url.EndsWith('/'))
+                {
+                    commands.SetCommand("url", $"{url}/");
+                }
             }
         }
 
@@ -208,36 +210,36 @@ internal static class Program
         {
             Console.WriteLine();
             Console.WriteLine($"usage: {nameof(BuildSetups)} -args=file -root=folder -extra=folder -changes=file -setup=*setup.exe");
-            Console.WriteLine( "    -auto=*update.xml -change=*changelog.txt -url=my.url -publish=folder -sign=text -cert=file");
-            Console.WriteLine( "    -pwd=file -company=text");
+            Console.WriteLine("    -auto=*update.xml -change=*changelog.txt -url=my.url -publish=folder -sign=text -cert=file");
+            Console.WriteLine("    -pwd=file -company=text");
             Console.WriteLine();
-            Console.WriteLine( "where:");
+            Console.WriteLine("where:");
             Console.WriteLine();
-            Console.WriteLine( "  root    : Path to root folder of the source code tree. Folder must exist.");
-            Console.WriteLine( "  setup   : Filter for finding setup executables.");
-            Console.WriteLine( "  master  : Name of master set of changes to be applied to auto update change log files.");
-            Console.WriteLine( "  auto    : Filter for finding auto update xml files.");
-            Console.WriteLine( "  change  : Filter for finding auto update change log files.");
-            Console.WriteLine( "  git     : Optional: path to git repository to use git comments with change log files.");
-            Console.WriteLine( "  url     : URL path to the auto update data files.");
-            Console.WriteLine( "  publish : Folder path to place all the files (changelog, update xml, setup executables). Folder must exist.");
-            Console.WriteLine( "  sign    : Comma separated list of folders to sign files or @value for a file with folder values.");
-            Console.WriteLine( "  cert    : PFX Cert file to sign executables with.");
-            Console.WriteLine( "  pwd     : Text file with the Cert password.");
-            Console.WriteLine( "  company : Company name.");
+            Console.WriteLine("  root    : Path to root folder of the source code tree. Folder must exist.");
+            Console.WriteLine("  setup   : Filter for finding setup executables.");
+            Console.WriteLine("  master  : Name of master set of changes to be applied to auto update change log files.");
+            Console.WriteLine("  auto    : Filter for finding auto update xml files.");
+            Console.WriteLine("  change  : Filter for finding auto update change log files.");
+            Console.WriteLine("  git     : Optional: path to git repository to use git comments with change log files.");
+            Console.WriteLine("  url     : URL path to the auto update data files.");
+            Console.WriteLine("  publish : Folder path to place all the files (changelog, update xml, setup executables). Folder must exist.");
+            Console.WriteLine("  sign    : Comma separated list of folders to sign files or @value for a file with folder values.");
+            Console.WriteLine("  cert    : PFX Cert file to sign executables with.");
+            Console.WriteLine("  pwd     : Text file with the Cert password.");
+            Console.WriteLine("  company : Company name.");
             Console.WriteLine();
-            Console.WriteLine( "optional:");
+            Console.WriteLine("optional:");
             Console.WriteLine();
-            Console.WriteLine( "  args    : A text file with the commandline parameters - values are overriden commandline.");
-            Console.WriteLine( "  extra   : A folder of file content to copy to publish folder.");
+            Console.WriteLine("  args    : A text file with the commandline parameters - values are overriden commandline.");
+            Console.WriteLine("  extra   : A folder of file content to copy to publish folder.");
             Console.WriteLine();
-            Console.WriteLine( "notes:");
+            Console.WriteLine("notes:");
             Console.WriteLine();
-            Console.WriteLine( " 1) Inno Setup must be installed");
-            Console.WriteLine( " 2) Use the single tick \"'\" character to surround arguments with spaces)");
-            Console.WriteLine( " 3) Args are prefixed with '/' or '-' characters.");
-            Console.WriteLine( " 4) All files and folders must be explicitly pathed");
-            Console.WriteLine( " 5) $[root] may start any file or folder path");
+            Console.WriteLine(" 1) Inno Setup must be installed");
+            Console.WriteLine(" 2) Use the single tick \"'\" character to surround arguments with spaces)");
+            Console.WriteLine(" 3) Args are prefixed with '/' or '-' characters.");
+            Console.WriteLine(" 4) All files and folders must be explicitly pathed");
+            Console.WriteLine(" 5) $[root] may start any file or folder path");
             Console.WriteLine();
             return;
         }

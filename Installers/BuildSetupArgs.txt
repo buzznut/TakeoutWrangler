@@ -3,7 +3,7 @@
 -change=*changelog.txt
 -git=C:\Users\sanut\OneDrive\GitMaster\PhotoCopy.git
 -master=changes.txt
--url='https://github.com/buzznut/TakeoutWrangler/blob/master/Installers/TakeoutWrangler/Output/' 
+-url='https://raw.githubusercontent.com/buzznut/TakeoutWrangler/refs/heads/master/Installers/TakeoutWrangler/Output/' 
 -publish='d:\takeoutwrangler-publish'
 -sign='@$[root]Installers\\ProjectsToSign.txt' 
 -cert='$[root]Installers\\selfsigncert.pfx' 
