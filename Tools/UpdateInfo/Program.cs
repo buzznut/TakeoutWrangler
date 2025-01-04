@@ -10,6 +10,7 @@ using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
+using System.Windows.Controls;
 using System.Xml;
 
 namespace BuildSetups;
@@ -698,6 +699,12 @@ internal static class Program
             updateXmlFile = Path.Combine(fileData.SourceDir, fileName);
 
             Console.WriteLine($"Creating update xml file: {updateXmlFile}");
+
+            //(1) the xml declaration is recommended, but not mandatory
+            XmlDeclaration xmlDeclaration = xmlDoc.CreateXmlDeclaration("1.0", "UTF-8", null);
+
+            XmlElement root = xmlDoc.DocumentElement;
+            xmlDoc.InsertBefore(xmlDeclaration, root);
 
             xmlElement = xmlDoc.CreateElement("item");
             xmlDoc.AppendChild(xmlElement);

@@ -45,6 +45,7 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "TakeoutWrangler", "TakeoutWrangler", "{20CC6639-1C21-44BF-9381-8FAA4087053C}"
 	ProjectSection(SolutionItems) = preProject
 		Installers\TakeoutWrangler\TakeoutWrangler.iss = Installers\TakeoutWrangler\TakeoutWrangler.iss
+		Installers\TakeoutWrangler\TakeoutWranglerUIchangelog.txt = Installers\TakeoutWrangler\TakeoutWranglerUIchangelog.txt
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tools", "Tools", "{9F60F645-B6D1-437B-9A4A-B03871E672B1}"

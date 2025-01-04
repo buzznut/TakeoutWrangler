@@ -51,6 +51,8 @@ public partial class MainForm : Form
     private bool pagesLoaded;
     private readonly List<ListBoxItem> items = new List<ListBoxItem>();
     private SolidBrush backBrush;
+    private const string updateUrl = "https://github.com/buzznut/TakeoutWrangler/tree/master/Installers/TakeoutWrangler/Output";
+
 
     private MainForm()
     {
@@ -672,6 +674,11 @@ public partial class MainForm : Form
         e.Graphics.FillRectangle(backBrush, e.CellBounds);
         e.Graphics.DrawString(item.Message, cellFont, foreBrush, e.CellBounds);
         e.Handled = true;
+    }
+
+    private void checkForUpdatesToolStripMenuItem_Click(object sender, EventArgs e)
+    {
+        if (!string.IsNullOrEmpty(updateUrl)) AutoUpdater.Start(updateUrl);
     }
 }
 
