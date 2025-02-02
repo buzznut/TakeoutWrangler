@@ -49,7 +49,7 @@ public class PhotoCopier
     private PhotoCopierActions behavior = PhotoCopierActions.Copy;
     private LoggingVerbosity logging = LoggingVerbosity.Verbose;
     private bool listOnly = true;
-    private bool parallel;
+    private bool parallel = true;
 
     private readonly char[] separator = new char[] { '.' };
     private readonly HandleOutput outputHandler = DummyOutput;
@@ -135,10 +135,10 @@ public class PhotoCopier
                 outputHandler($"                    {PhotoCopierActions.Reorder} media files only if pattern is different.");
                 outputHandler();
                 outputHandler($" list=value         value is true to list only, false to perform actions.");
-                outputHandler($"                    example: action=true would only show potential errors or actions without changing destination.");
+                outputHandler($"                    example: value=true would only show potential errors or actions without changing destination.");
                 outputHandler();
                 outputHandler($" parallel=value     value is true to run in parallel for faster performance, false to run sequentially. Parallem mode uses more memory.");
-                outputHandler($"                    example: action=true would only show potential errors or actions without changing destination.");
+                outputHandler($"                    example: value=true Uses more memory and runs faster. (default=true)");
                 outputHandler();
                 outputHandler($" loggin=verbosity   {LoggingVerbosity.Quiet}, {LoggingVerbosity.Change}, or {LoggingVerbosity.Verbose}. {LoggingVerbosity.Quiet}=minimal output, {LoggingVerbosity.Change}=minimal+changed content, {LoggingVerbosity.Verbose}=all");
                 outputHandler($"                    (default={LoggingVerbosity.Change})");

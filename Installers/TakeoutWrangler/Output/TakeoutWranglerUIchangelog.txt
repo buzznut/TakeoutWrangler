@@ -1,3 +1,6 @@
+1.0.125.1429 - 2025/02/02 05:50:25
+    1) Testing autoupdate
+
 1.0.125.884 - 2025/02/02 08:44:24
     1) AutoUpdate test
     2) Latest build - 2/1/2025

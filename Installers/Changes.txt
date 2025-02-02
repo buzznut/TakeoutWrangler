@@ -34,3 +34,5 @@
 -git(a53721f9b545f6c9a3137638a862166152e3fb6b)=Add/improve progress logging. Added print preview. Other minor bug fixes and improvements.
 -all=AutoUpdate test
 -git(0463cc2b6267397cc85e73e527f7fe9ca3caf6df)=Latest build - 2/1/2025
+-all=Change/fix some help text. Set 'Parallel=true' by default.
+-git(28aafec5c064b0c3d9fd2e9c755dd65da6488328)=Testing autoupdate
