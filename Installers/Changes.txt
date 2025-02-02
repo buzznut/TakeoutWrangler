@@ -32,3 +32,5 @@
 -git(af89799548cb9cb6d4edeb8a9ac6947bd9611c9b)=Fix problems with GitHub url for retrieving autoupdate.net required information. Fix a small problem with BuildSetups not putting Git commit text into the change log.
 -git(d6e1531edbc0b4d639bd2d9d66ac24c448112926)=Fix problem with double slash characters in the URL.
 -git(a53721f9b545f6c9a3137638a862166152e3fb6b)=Add/improve progress logging. Added print preview. Other minor bug fixes and improvements.
+-all=AutoUpdate test
+-git(0463cc2b6267397cc85e73e527f7fe9ca3caf6df)=Latest build - 2/1/2025

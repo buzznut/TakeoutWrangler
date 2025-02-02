@@ -1,3 +1,7 @@
+1.0.125.884 - 2025/02/02 08:44:24
+    1) AutoUpdate test
+    2) Latest build - 2/1/2025
+
 1.0.125.69 - 2025/02/01 07:09:32
     1) Minor bug fixes, performance improvements, or setup changes.
 
