@@ -31,3 +31,4 @@
 -git(6027e8a1b6ed8c7b3f97890eaff07005c2a111e5)=Don't save .bak files to git
 -git(af89799548cb9cb6d4edeb8a9ac6947bd9611c9b)=Fix problems with GitHub url for retrieving autoupdate.net required information. Fix a small problem with BuildSetups not putting Git commit text into the change log.
 -git(d6e1531edbc0b4d639bd2d9d66ac24c448112926)=Fix problem with double slash characters in the URL.
+-git(a53721f9b545f6c9a3137638a862166152e3fb6b)=Add/improve progress logging. Added print preview. Other minor bug fixes and improvements.
