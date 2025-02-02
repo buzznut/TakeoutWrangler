@@ -13,5 +13,4 @@ public class MediaInfo
     public string MetaJson { get; set; }
     public string EntryName { get; set; }
     public string ArchivePath { get; set; }
-    public int ProgressId { get; set; }
 }

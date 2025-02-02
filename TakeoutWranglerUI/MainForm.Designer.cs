@@ -5,6 +5,9 @@
 // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 // <@$&< copyright end >&$@>
 
+using System.Drawing;
+using System.Windows.Forms;
+
 namespace TakeoutWrangler
 {
     partial class MainForm
@@ -39,8 +42,6 @@ namespace TakeoutWrangler
 
                 helpStreams.Clear();
                 worker?.Dispose();
-
-                backBrush?.Dispose();
             }
 
             base.Dispose(disposing);
@@ -70,17 +71,16 @@ namespace TakeoutWrangler
             howToUseGoogleTakeoutToolStripMenuItem = new ToolStripMenuItem();
             toolStripMenuTakeout = new ToolStripMenuItem();
             toolStripSeparator3 = new ToolStripSeparator();
+            toolStripMenuItemCheckForUpdates = new ToolStripMenuItem();
             aboutToolStripMenuItem = new ToolStripMenuItem();
             listBoxView = new DataGridView();
             Column = new DataGridViewTextBoxColumn();
             timerView = new System.Windows.Forms.Timer(components);
             buttonRun = new Button();
             printDialog = new PrintDialog();
-            printDocument = new System.Drawing.Printing.PrintDocument();
             textBoxStatus = new TextBox();
             labelProgress = new Label();
             timerIsRunning = new System.Windows.Forms.Timer(components);
-            toolStripMenuItemCheckForUpdates = new ToolStripMenuItem();
             menuStripMainMenu.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)listBoxView).BeginInit();
             SuspendLayout();
@@ -120,7 +120,7 @@ namespace TakeoutWrangler
             toolStripSaveConsole.Name = "toolStripSaveConsole";
             toolStripSaveConsole.Size = new Size(201, 22);
             toolStripSaveConsole.Text = "Save console contents...";
-            toolStripSaveConsole.Click += toolStripSaveConsole_Click;
+            toolStripSaveConsole.Click += ToolStripSaveConsole_Click;
             // 
             // toolStripSeparator1
             // 
@@ -181,6 +181,13 @@ namespace TakeoutWrangler
             toolStripSeparator3.Name = "toolStripSeparator3";
             toolStripSeparator3.Size = new Size(226, 6);
             // 
+            // toolStripMenuItemCheckForUpdates
+            // 
+            toolStripMenuItemCheckForUpdates.Name = "toolStripMenuItemCheckForUpdates";
+            toolStripMenuItemCheckForUpdates.Size = new Size(229, 22);
+            toolStripMenuItemCheckForUpdates.Text = "Check for updates";
+            toolStripMenuItemCheckForUpdates.Click += checkForUpdatesToolStripMenuItem_Click;
+            // 
             // aboutToolStripMenuItem
             // 
             aboutToolStripMenuItem.Name = "aboutToolStripMenuItem";
@@ -191,12 +198,17 @@ namespace TakeoutWrangler
             // listBoxView
             // 
             listBoxView.AllowUserToAddRows = false;
+            listBoxView.AllowUserToDeleteRows = false;
+            listBoxView.AllowUserToResizeColumns = false;
+            listBoxView.AllowUserToResizeRows = false;
             listBoxView.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
             listBoxView.BackgroundColor = SystemColors.Control;
             listBoxView.CellBorderStyle = DataGridViewCellBorderStyle.None;
+            listBoxView.ClipboardCopyMode = DataGridViewClipboardCopyMode.EnableWithoutHeaderText;
             listBoxView.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
             listBoxView.ColumnHeadersVisible = false;
             listBoxView.Columns.AddRange(new DataGridViewColumn[] { Column });
+            listBoxView.EditMode = DataGridViewEditMode.EditProgrammatically;
             listBoxView.Font = new Font("Consolas", 9F, FontStyle.Regular, GraphicsUnit.Point, 0);
             listBoxView.Location = new Point(5, 24);
             listBoxView.Name = "listBoxView";
@@ -205,12 +217,14 @@ namespace TakeoutWrangler
             listBoxView.RowHeadersWidthSizeMode = DataGridViewRowHeadersWidthSizeMode.DisableResizing;
             listBoxView.RowTemplate.Height = 20;
             listBoxView.RowTemplate.ReadOnly = true;
+            listBoxView.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
+            listBoxView.ShowCellErrors = false;
+            listBoxView.ShowCellToolTips = false;
             listBoxView.ShowEditingIcon = false;
+            listBoxView.ShowRowErrors = false;
             listBoxView.Size = new Size(632, 284);
             listBoxView.TabIndex = 1;
             listBoxView.CellPainting += listBoxView_CellPainting;
-            listBoxView.SizeChanged += listBoxView_SizeChanged;
-            listBoxView.KeyDown += listBoxView_KeyDown;
             // 
             // Column
             // 
@@ -238,11 +252,9 @@ namespace TakeoutWrangler
             // 
             // printDialog
             // 
-            printDialog.Document = printDocument;
-            // 
-            // printDocument
-            // 
-            printDocument.PrintPage += printDocument_PrintPage;
+            printDialog.AllowSelection = true;
+            printDialog.AllowSomePages = true;
+            printDialog.UseEXDialog = true;
             // 
             // textBoxStatus
             // 
@@ -269,14 +281,7 @@ namespace TakeoutWrangler
             // 
             timerIsRunning.Enabled = true;
             timerIsRunning.Interval = 250;
-            timerIsRunning.Tick += timerIsRunning_Tick;
-            // 
-            // toolStripMenuItemCheckForUpdates
-            // 
-            toolStripMenuItemCheckForUpdates.Name = "toolStripMenuItemCheckForUpdates";
-            toolStripMenuItemCheckForUpdates.Size = new Size(229, 22);
-            toolStripMenuItemCheckForUpdates.Text = "Check for updates";
-            toolStripMenuItemCheckForUpdates.Click += checkForUpdatesToolStripMenuItem_Click;
+            timerIsRunning.Tick += TimerIsRunning_Tick;
             // 
             // MainForm
             // 
@@ -311,7 +316,6 @@ namespace TakeoutWrangler
         private System.Windows.Forms.Timer timerView;
         private Button buttonRun;
         private PrintDialog printDialog;
-        private System.Drawing.Printing.PrintDocument printDocument;
         private ToolStripMenuItem toolStripMenuItemPrint;
         private ToolStripSeparator toolStripSeparator1;
         private ToolStripMenuItem settingsToolStripMenuItem;

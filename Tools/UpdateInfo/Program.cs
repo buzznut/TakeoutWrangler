@@ -590,7 +590,7 @@ internal static class Program
 
         try
         {
-            _ = X509Certificate.CreateFromSignedFile(filePath);
+            _ = X509CertificateLoader.LoadCertificateFromFile(filePath);
             Console.WriteLine($"Already signed: \"{filePath}\"");
             //already signed - skip this one
             return 0;
@@ -711,11 +711,11 @@ internal static class Program
             xmlElement = xmlDoc.CreateElement("item");
             xmlDoc.AppendChild(xmlElement);
 
-            XmlNode nodeUrl = xmlDoc.CreateElement("url");
-            xmlElement.AppendChild(nodeUrl);
-
             XmlNode nodeVersion = xmlDoc.CreateElement("version");
             xmlElement.AppendChild(nodeVersion);
+
+            XmlNode nodeUrl = xmlDoc.CreateElement("url");
+            xmlElement.AppendChild(nodeUrl);
 
             XmlNode nodeChangeLog = xmlDoc.CreateElement("changelog");
             xmlElement.AppendChild(nodeChangeLog);

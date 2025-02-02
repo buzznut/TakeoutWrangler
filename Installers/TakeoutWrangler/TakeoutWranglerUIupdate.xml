@@ -1,7 +1,7 @@
 ﻿<?xml version="1.0" encoding="UTF-8"?>
 <item>
-  <url>https://raw.githubusercontent.com/buzznut/TakeoutWrangler/refs/heads/master/Installers/TakeoutWrangler/Output/TakeoutWranglerUISetup.exe</url>
   <version>1.0.96.1330</version>
+  <url>https://raw.githubusercontent.com/buzznut/TakeoutWrangler/refs/heads/master/Installers/TakeoutWrangler/Output/TakeoutWranglerUISetup.exe</url>
   <changelog>https://raw.githubusercontent.com/buzznut/TakeoutWrangler/refs/heads/master/Installers/TakeoutWrangler/Output/TakeoutWranglerUIchangelog.txt</changelog>
   <mandatory>false</mandatory>
 </item>

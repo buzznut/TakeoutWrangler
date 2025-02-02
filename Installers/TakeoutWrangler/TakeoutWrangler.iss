@@ -4,9 +4,9 @@
 #define MyAppPublisher "Stewart A. Nutter"
 #define MyAppName "TakeoutWranglerUI"
 #define MyAppExeName MyAppName + ".exe"
-#define MySourceDir "C:\Users\sanut\OneDrive\GitCode\PhotoCopy\TakeoutWranglerUI\bin\Release\net8.0-windows\"
+#define MySourceDir "C:\Users\sanut\OneDrive\GitCode\PhotoCopy\TakeoutWranglerUI\bin\Release\net9.0-windows\"
 #define MySourceExe MySourceDir + "\" + MyAppExeName
-#define MyAppVersion GetVersionNumbersString(MySourceExe)
+#define MyAppVersion GetVersionNumbersString(MySourceExe)	
 #define MyIcon "C:\Users\sanut\OneDrive\GitCode\PhotoCopy\Documentation\photos.ico"
 
 ; requires netcorecheck.exe and netcorecheck_x64.exe (see CodeDependencies.iss)
@@ -87,9 +87,11 @@ begin
   //Dependency_AddDotNet70;
   //Dependency_AddDotNet70Asp;
   //Dependency_AddDotNet70Desktop;
-  Dependency_AddDotNet80;
+  //Dependency_AddDotNet80;
   //Dependency_AddDotNet80Asp;
-  Dependency_AddDotNet80Desktop;
+  //Dependency_AddDotNet80Desktop;
+  Dependency_AddDotNet90;
+  Dependency_AddDotNet90Desktop
 #endif
 
   //Dependency_AddVC2005;

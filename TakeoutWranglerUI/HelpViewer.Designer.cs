@@ -5,6 +5,9 @@
 // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 // <@$&< copyright end >&$@>
 
+using System.Drawing;
+using System.Windows.Forms;
+
 namespace TakeoutWranglerUI
 {
     partial class HelpViewer

@@ -30,3 +30,4 @@
 -git(5f0cfacf8cf2d7423904caae811a6b7c7cddf2c6)=Added git commit text to BuildSetups. Added 'parallel' option for performance. Improved progress counting. Fixed a retry problem for parallel processing. Minor textual changes and bug fixes.
 -git(6027e8a1b6ed8c7b3f97890eaff07005c2a111e5)=Don't save .bak files to git
 -git(af89799548cb9cb6d4edeb8a9ac6947bd9611c9b)=Fix problems with GitHub url for retrieving autoupdate.net required information. Fix a small problem with BuildSetups not putting Git commit text into the change log.
+-git(d6e1531edbc0b4d639bd2d9d66ac24c448112926)=Fix problem with double slash characters in the URL.

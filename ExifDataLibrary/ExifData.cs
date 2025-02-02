@@ -1804,7 +1804,9 @@ public class ExifData
     {
         byte[] TempBuffer = new byte[2];
 
-        ImageStream.Read(TempBuffer, 0, 2);
+        int bytesRead = ImageStream.Read(TempBuffer, 0, 2);
+        if (bytesRead != 2) throw new ExifException(ExifErrCode.InternalImageStructureIsWrong);
+
         BlockMarker = ReadUInt16BE(TempBuffer, 0);
         if (BlockMarker == 0xFF01 || (BlockMarker >= 0xFFD0 && BlockMarker <= 0xFFDA))
         {
@@ -1817,7 +1819,9 @@ public class ExifData
         }
         else
         {
-            ImageStream.Read(TempBuffer, 0, 2);
+            bytesRead = ImageStream.Read(TempBuffer, 0, 2);
+            if (bytesRead != 2) throw new ExifException(ExifErrCode.InternalImageStructureIsWrong);
+
             BlockContentSize = ReadUInt16BE(TempBuffer, 0) - 2;
             if (BlockContentSize < 0)
             {
@@ -1888,7 +1892,9 @@ public class ExifData
         ImageType StreamImageType;
         byte[] TempBuffer = new byte[4];
 
-        StreamToBeChecked.Read(TempBuffer, 0, 4);
+        int bytesRead = StreamToBeChecked.Read(TempBuffer, 0, 4);
+        if (bytesRead != 4) throw new ExifException(ExifErrCode.InternalImageStructureIsWrong);
+
         uint ImageSignature = ReadUInt32BE(TempBuffer, 0);
         if (ImageSignature >> 16 == JpegSoiMarker)
         {

@@ -5,6 +5,9 @@
 // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 // <@$&< copyright end >&$@>
 
+using System.Drawing;
+using System.Windows.Forms;
+
 namespace TakeoutWrangler
 {
     partial class SettingsForm

@@ -30,9 +30,16 @@ public enum ReturnCode
     Canceled
 }
 
-public enum ErrorCode
+public enum MessageCode
 {
     Success,
-    Warning,
-    Error
+    Error,
+    Warning
+}
+
+public enum StatusCode
+{
+    Progress,
+    Total,
+    Finish
 }

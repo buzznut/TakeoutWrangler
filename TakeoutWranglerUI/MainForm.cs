@@ -10,7 +10,6 @@ using PhotoCopyLibrary;
 using Spire.Pdf;
 using System.ComponentModel;
 using System.Diagnostics;
-using System.Drawing.Printing;
 using System.Net;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -26,9 +25,7 @@ public partial class MainForm : Form
     [DllImport("user32.dll", CharSet = CharSet.Auto)]
     public static extern uint RegisterWindowMessage(string lpString);
 
-    //private int visibleItems;
     private PhotoCopier copier;
-    private string stringToPrint;
     private readonly string[] args;
     private AppSettingsJson settings;
     private Configs configs;
@@ -38,7 +35,6 @@ public partial class MainForm : Form
     private static uint viewStatus;
     private static IntPtr myHandle;
     private bool showNoUpdateAvailable;
-    private PleaseWait pleaseWait;
     private readonly string[] helpFiles = { "Help.pdf", "About.pdf", "HowToGetYourPhotosFromGoogleTakeout.pdf" };
     private readonly Dictionary<string, Stream[]> helpStreams = new Dictionary<string, Stream[]>(StringComparer.OrdinalIgnoreCase)
     {
@@ -46,13 +42,13 @@ public partial class MainForm : Form
         { "About.pdf", null },
         { "HowToGetYourPhotosFromGoogleTakeout.pdf", null }
     };
-    private BackgroundWorker worker;
-    private string appDir = AppHelpers.GetApplicationDir();
+    private readonly BackgroundWorker worker;
+    private readonly string appDir = AppHelpers.GetApplicationDir();
     private bool pagesLoaded;
     private readonly List<ListBoxItem> items = new List<ListBoxItem>();
-    private SolidBrush backBrush;
     private const string updateUrl = "https://raw.githubusercontent.com/buzznut/TakeoutWrangler/refs/heads/master/Installers/TakeoutWrangler/Output/TakeoutWranglerUIupdate.xml";
-
+    private static int totalItems;
+    private static int progress;
 
     private MainForm()
     {
@@ -68,7 +64,6 @@ public partial class MainForm : Form
         viewWarning = RegisterWindowMessage("UIView_Warning");
         viewError = RegisterWindowMessage("UIView_Error");
         viewStatus = RegisterWindowMessage("UIView_Status");
-        //visibleItems = listBoxView.ClientSize.Height / listBoxView.ItemHeight;
         ResumeLayout(true);
 
         worker = new BackgroundWorker
@@ -83,12 +78,7 @@ public partial class MainForm : Form
         StartPageResolve(0);
 
         AutoUpdater.CheckForUpdateEvent += UpdateCheckEvent;
-        AutoUpdater.ParseUpdateInfoEvent += ParseUpdateInfoEvent;
         this.args = args;
-    }
-
-    private void ParseUpdateInfoEvent(ParseUpdateInfoEventArgs args)
-    {
     }
 
     private void StartPageResolve(int index)
@@ -106,19 +96,18 @@ public partial class MainForm : Form
 
     private void ResolveNextImageCompleted(object sender, RunWorkerCompletedEventArgs e)
     {
-        BackgroundWorker bw = sender as BackgroundWorker;
-        if (bw == null) return;
+        if (sender is not BackgroundWorker _) return;
 
         PageLoadData data = e.Result as PageLoadData;
         if (data == null) return;
 
         if (e.Cancelled)
         {
-            MessageBox.Show("Operation was canceled");
+            _ = MessageBox.Show("Operation was canceled");
         }
         else if (e.Error != null)
         {
-            MessageBox.Show(e.Error.Message);
+            _ = MessageBox.Show(e.Error.Message);
         }
         else
         {
@@ -138,10 +127,8 @@ public partial class MainForm : Form
 
     private void ResolveNextImage(object sender, DoWorkEventArgs e)
     {
+        if (sender is not BackgroundWorker bw) return;
         if (appDir == null) return;
-
-        BackgroundWorker bw = sender as BackgroundWorker;
-        if (bw == null) return;
 
         PageLoadData data = e.Argument as PageLoadData;
         if (data == null) return;
@@ -174,8 +161,7 @@ public partial class MainForm : Form
         }
         else if (m.Msg == viewStatus)
         {
-            string text = Marshal.PtrToStringAuto(m.WParam, Convert.ToInt32(m.LParam));
-            textBoxStatus.Text = text?.PadRight(13) ?? string.Empty;
+            textBoxStatus.Text = $"{++progress}/{totalItems}";
         }
         else if (m.Msg == viewWarning)
         {
@@ -224,25 +210,27 @@ public partial class MainForm : Form
         }
         catch (Exception ex)
         {
-            OutputHandler(ex.Message, ErrorCode.Error);
+            OutputHandler(ex.Message, MessageCode.Error);
         }
 
         return photoCopier;
     }
 
-    private static void StatusHandler(string status = null)
+    private static void StatusHandler(StatusCode statusCode, int value)
     {
-        status ??= string.Empty;
-
-        IntPtr lpData = Marshal.StringToHGlobalAuto(status);
-        IntPtr lpLength = new IntPtr(status.Length);
-        if (!PostMessage(myHandle, viewStatus, lpData, lpLength))
+        if (statusCode == StatusCode.Total)
+        {
+            totalItems = value;
+            progress = 0;
+            return;
+        }
+        if (!PostMessage(myHandle, viewStatus, IntPtr.Zero, IntPtr.Zero))
         {
             throw new Exception("Could not post status message.");
         }
     }
 
-    private static void OutputHandler(string output = null, ErrorCode errorCode = ErrorCode.Success)
+    private static void OutputHandler(string output = null, MessageCode errorCode = MessageCode.Success)
     {
         output ??= string.Empty;
 
@@ -250,7 +238,7 @@ public partial class MainForm : Form
         IntPtr lpLength = new IntPtr(output.Length);
         switch (errorCode)
         {
-            case ErrorCode.Success:
+            case MessageCode.Success:
             {
                 if (!PostMessage(myHandle, viewMessage, lpData, lpLength))
                 {
@@ -259,7 +247,7 @@ public partial class MainForm : Form
                 break;
             }
 
-            case ErrorCode.Warning:
+            case MessageCode.Warning:
             {
                 if (!PostMessage(myHandle, viewWarning, lpData, lpLength))
                 {
@@ -268,7 +256,7 @@ public partial class MainForm : Form
                 break;
             }
 
-            case ErrorCode.Error:
+            case MessageCode.Error:
             {
                 if (!PostMessage(myHandle, viewError, lpData, lpLength))
                 {
@@ -281,6 +269,8 @@ public partial class MainForm : Form
 
     private void MainForm_Load(object sender, EventArgs e)
     {
+        if (sender is not Form _) return;
+
         PhotoCopier photoCopier = HandleConfiguration(args);
         if (photoCopier != null)
         {
@@ -373,22 +363,23 @@ public partial class MainForm : Form
         }
     }
 
-    private void listBoxView_SizeChanged(object sender, EventArgs e)
-    {
-        //visibleItems = listBoxView.ClientSize.Height / 20;
-    }
-
     private void timerView_Tick(object sender, EventArgs e)
     {
+        if (sender is not System.Windows.Forms.Timer timer) return;
+
         try
         {
-            timerView.Stop();
+            timer.Stop();
             if (items.Count > 0)
             {
                 foreach (ListBoxItem item in items)
                 {
                     int index = listBoxView.Rows.Add();
-                    listBoxView.Rows[index].Cells[0].Value = item;
+                    DataGridViewCell cell = listBoxView.Rows[index].Cells[0];
+                    if (cell == null) { continue; }
+
+                    cell.Value = item.Message;
+                    cell.Tag = item.ItemColor;
                 }
                 listBoxView.FirstDisplayedScrollingRowIndex = listBoxView.RowCount - 1;
                 items.Clear();
@@ -424,87 +415,66 @@ public partial class MainForm : Form
             catch (Exception ex)
             {
                 if (Debugger.IsAttached) Debugger.Break();
-                OutputHandler(ex.Message, ErrorCode.Error);
+                OutputHandler(ex.Message, MessageCode.Error);
             }
         }
     }
 
-    public static ErrorCode ErrorCodeFromReturnCode(ReturnCode code)
+    public static MessageCode ErrorCodeFromReturnCode(ReturnCode code)
     {
         switch (code)
         {
             case ReturnCode.Success:
-                return ErrorCode.Success;
+                return MessageCode.Success;
             case ReturnCode.HadIssues:
-                return ErrorCode.Warning;
+                return MessageCode.Warning;
             case ReturnCode.DirectoryError:
-                return ErrorCode.Error;
+                return MessageCode.Error;
             case ReturnCode.Canceled:
-                return ErrorCode.Warning;
+                return MessageCode.Warning;
+            case ReturnCode.Error:
             default:
-                return ErrorCode.Error;
-        }
-    }
-
-    private void printDocument_PrintPage(object sender, PrintPageEventArgs e)
-    {
-        if (e.Graphics == null) return;
-
-        if (pleaseWait == null)
-        {
-            pleaseWait = new PleaseWait("Printing ...", this);
-            pleaseWait.Show();
-        }
-
-        pleaseWait.TopMost = true;
-        pleaseWait.BringToFront();
-
-        // Sets the value of charactersOnPage to the number of characters
-        // of stringToPrint that will fit within the bounds of the page.
-        e.Graphics.MeasureString(stringToPrint, Font,
-            e.MarginBounds.Size, StringFormat.GenericTypographic,
-            out int charactersOnPage, out int _);
-
-        // Draws the string within the bounds of the page
-        e.Graphics.DrawString(stringToPrint, Font, System.Drawing.Brushes.Black,
-            e.MarginBounds, StringFormat.GenericTypographic);
-
-        // Remove the portion of the string that has been printed.
-        stringToPrint = stringToPrint.Substring(charactersOnPage);
-
-        // Check to see if more pages are to be printed.
-        e.HasMorePages = (stringToPrint.Length > 0);
-        if (!e.HasMorePages)
-        {
-            // done printing
-            if (pleaseWait != null)
-            {
-                pleaseWait.Close();
-                pleaseWait = null;
-            }
+                return MessageCode.Error;
         }
     }
 
     private void toolStripMenuItemPrint_Click(object sender, EventArgs e)
     {
+        PrintConsole(false);
+    }
+
+    private void PrintConsole(bool showPreview)
+    {
         try
         {
-            StringBuilder sb = new StringBuilder();
-            foreach (var row in listBoxView.Rows)
-            {
-                sb.AppendLine(row?.ToString() ?? string.Empty);
-            }
-
-            stringToPrint = sb.ToString();
-
-            if (DialogResult.OK == printDialog.ShowDialog(this))
-            {
-                printDocument.Print();
-            }
+            NewPrintDialog newPrintDialog = new NewPrintDialog(CreateText);
+            newPrintDialog.ShowDialog(this);
         }
         catch (Exception)
         {
         }
+    }
+
+    private StringBuilder CreateText(bool useSelection)
+    {
+        StringBuilder sb = new StringBuilder();
+
+        foreach (DataGridViewRow row in listBoxView.Rows)
+        {
+            if (useSelection && !row.Selected) continue;
+
+            int cellCount = 0;
+            foreach (DataGridViewCell cell in row.Cells)
+            {
+                if (cellCount > 0) sb.Append(' ');
+                sb.Append(cell.Value?.ToString() ?? string.Empty);
+                cellCount++;
+            }
+
+            sb.AppendLine(string.Empty);
+        }
+
+        return sb;
     }
 
     private void settingsToolStripMenuItem_Click(object sender, EventArgs e)
@@ -517,7 +487,7 @@ public partial class MainForm : Form
         listBoxView.Rows.Clear();
     }
 
-    private void timerIsRunning_Tick(object sender, EventArgs e)
+    private void TimerIsRunning_Tick(object sender, EventArgs e)
     {
         if (!(copier?.IsRunning).GetValueOrDefault())
         {
@@ -533,45 +503,44 @@ public partial class MainForm : Form
 
     private void UpdateCheckEvent(UpdateInfoEventArgs args)
     {
-        if (args.Error == null)
+        switch (args.Error)
         {
-            if (args.IsUpdateAvailable)
-            {
-                // Uncomment the following line if you want to show standard update dialog instead.
-                AutoUpdater.ShowUpdateForm(args);
-            }
-            else if (showNoUpdateAvailable)
-            {
+            case null:
+                if (args.IsUpdateAvailable)
+                {
+                    // Uncomment the following line if you want to show standard update dialog instead.
+                    AutoUpdater.ShowUpdateForm(args);
+                }
+                else if (showNoUpdateAvailable)
+                {
+                    MessageBox.Show(
+                        "No update available please try again later.", "Updates",
+                        MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+                break;
+
+            case WebException:
                 MessageBox.Show(
-                    "No update available please try again later.", "Updates",
-                    MessageBoxButtons.OK, MessageBoxIcon.Information);
-            }
-        }
-        else
-        {
-            if (args.Error is WebException)
-            {
-                MessageBox.Show(
-                    "There is a problem reaching update server. Please check your internet connection and try again later.",
-                    "Update Check Failed",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Error);
-            }
-            else
-            {
+                            "There is a problem reaching update server. Please check your internet connection and try again later.",
+                            "Update Check Failed",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Error);
+                break;
+            
+            default:
 #if DEBUG
                 if (Debugger.IsAttached) Debugger.Break();
 #endif
                 MessageBox.Show(args.Error.Message,
                     args.Error.GetType().ToString(), MessageBoxButtons.OK,
                     MessageBoxIcon.Error);
-            }
+                break;
         }
 
         showNoUpdateAvailable = true;
     }
 
-    private void toolStripSaveConsole_Click(object sender, EventArgs e)
+    private void ToolStripSaveConsole_Click(object sender, EventArgs e)
     {
         SaveFileDialog saveFileDialog = new SaveFileDialog() { Filter = "Text Files|*.txt", Title = "Save Console Output" };
 
@@ -605,17 +574,37 @@ public partial class MainForm : Form
         if (e.KeyCode == Keys.C && e.Control)
         {
             StringBuilder sb = new StringBuilder();
-            foreach (object item in listBoxView.SelectedRows)
+            foreach (DataGridViewRow item in listBoxView.SelectedRows)
             {
-                sb.AppendLine(item?.ToString() ?? string.Empty);
+                if (item == null)
+                    sb.AppendLine();
+                else
+                {
+                    int count = 0;
+                    foreach (DataGridViewCell cell in item.Cells)
+                    {
+                        if (count > 0) sb.Append(", ");
+                        sb.Append((cell.Value as string) ?? "");
+                        count++;
+                    }
+                    sb.AppendLine();
+                }
             }
-            Clipboard.SetText(sb.ToString());
+
+            if (sb.Length > 0)
+            {
+                Clipboard.SetText(sb.ToString());
+            }
         }
         else if (e.KeyCode == Keys.A && e.Control)
         {
             foreach (int index in Enumerable.Range(0, listBoxView.Rows.Count))
             {
                 listBoxView.Rows[index].Selected = true;
+                foreach (DataGridViewCell cell in listBoxView.Rows[index].Cells)
+                {
+                    cell.Selected = true;
+                }
             }
         }
     }
@@ -662,28 +651,45 @@ public partial class MainForm : Form
         viewer.ShowDialog();
     }
 
-    private void listBoxView_CellPainting(object _, DataGridViewCellPaintingEventArgs e)
+    private void listBoxView_CellPainting(object sender, DataGridViewCellPaintingEventArgs e)
     {
+        if (sender is not DataGridView lbv) return;
+
         if (e.RowIndex < 0 || e.Graphics == null) return;
-        DataGridViewRow row = listBoxView.Rows[e.RowIndex];
-        backBrush ??= new SolidBrush(BackColor);
+        DataGridViewRow row = lbv.Rows[e.RowIndex];
+        using (SolidBrush backBrush = row.Selected ? new SolidBrush(SystemColors.Highlight) : new SolidBrush(BackColor))
+        {
+            Font cellFont = e.CellStyle?.Font ?? lbv.Font;
+            lbv.RowTemplate.Height = cellFont.Height;
+            row.Height = cellFont.Height;
 
-        Font cellFont = e.CellStyle?.Font ?? listBoxView.Font;
-        listBoxView.RowTemplate.Height = cellFont.Height;
-        row.Height = cellFont.Height;
+            var cell = lbv.Rows[e.RowIndex].Cells[0];
+            if (cell == null) return;
 
-        ListBoxItem item = listBoxView.Rows[e.RowIndex].Cells[0].Value as ListBoxItem;
-        if (item == null) return;
+            System.Drawing.Color itemColor = cell.Tag as System.Drawing.Color? ?? ForeColor;
 
-        SolidBrush foreBrush = new SolidBrush(item.ItemColor);
-        e.Graphics.FillRectangle(backBrush, e.CellBounds);
-        e.Graphics.DrawString(item.Message, cellFont, foreBrush, e.CellBounds);
-        e.Handled = true;
+            using (SolidBrush foreBrush = row.Selected ? new SolidBrush(BackColor) : new SolidBrush(itemColor))
+            {
+                e.Graphics.FillRectangle(backBrush, e.CellBounds);
+                e.Graphics.DrawString((cell.Value as string) ?? "", cellFont, foreBrush, e.CellBounds);
+            }
+            e.Handled = true;
+        }
     }
 
     private void checkForUpdatesToolStripMenuItem_Click(object sender, EventArgs e)
     {
         if (!string.IsNullOrEmpty(updateUrl)) AutoUpdater.Start(updateUrl);
+    }
+
+    private void toolStripMenuItem1_Click(object sender, EventArgs e)
+    {
+        PrintConsole(true);
+    }
+
+    private void printPreviewDialog_Click(object sender, EventArgs e)
+    {
+
     }
 }
 

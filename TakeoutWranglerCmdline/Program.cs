@@ -39,11 +39,11 @@ internal static class Program
         return (int)photoCopier.RunAsync().GetAwaiter().GetResult();
     }
 
-    private static void OutputHandler(string output = null, ErrorCode errorCode = ErrorCode.Success)
+    private static void OutputHandler(string output = null, MessageCode errorCode = MessageCode.Success)
     {
         if (output != null)
         {
-            if (errorCode != ErrorCode.Success)
+            if (errorCode != MessageCode.Success)
                 Console.Error.WriteLine(output);
             else
                 Console.WriteLine(output);
@@ -52,7 +52,7 @@ internal static class Program
             Console.WriteLine();
     }
 
-    private static void StatusHandler(string output = null)
+    private static void StatusHandler(StatusCode statusCode, int value)
     {
     }
 }

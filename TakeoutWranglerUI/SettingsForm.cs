@@ -7,20 +7,21 @@
 
 using PhotoCopyLibrary;
 using System.Text;
+using System.Windows.Forms;
 
 namespace TakeoutWrangler;
 
 public partial class SettingsForm : Form
 {
-    public string Source { get; set; }
-    public string Destination { get; set; }
-    public string Filter { get; set; }
-    public string Pattern { get; set; }
-    public bool ListOnly { get; set; }
-    public bool Parallel { get; set; }
-    public LoggingVerbosity Logging { get; set; }
-    public PhotoCopierActions Behavior { get; set; }
-    public PhotoCopier PhotoCopierSession { get; set; }
+    public string Source;
+    public string Destination;
+    public string Filter;
+    public string Pattern;
+    public bool ListOnly;
+    public bool Parallel;
+    public LoggingVerbosity Logging;
+    public PhotoCopierActions Behavior;
+    public PhotoCopier PhotoCopierSession;
 
     public SettingsForm()
     {

@@ -7,7 +7,6 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TakeoutWranglerCmdline", "T
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{403BF1C6-0D7E-40D8-A029-2FBDF12B1A4B}"
 	ProjectSection(SolutionItems) = preProject
-		.editorconfig = .editorconfig
 		Documentation\Copyright.txt = Documentation\Copyright.txt
 		GlobalAssemblyInfo.tt = GlobalAssemblyInfo.tt
 		Documentation\photos.ico = Documentation\photos.ico
@@ -30,6 +29,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Installers", "Installers", 
 	ProjectSection(SolutionItems) = preProject
 		Installers\BuildSetupArgs.txt = Installers\BuildSetupArgs.txt
 		Installers\Changes.txt = Installers\Changes.txt
+		Installers\includes\CodeDependencies.iss = Installers\includes\CodeDependencies.iss
 		Installers\ProjectsToSign.txt = Installers\ProjectsToSign.txt
 	EndProjectSection
 EndProject

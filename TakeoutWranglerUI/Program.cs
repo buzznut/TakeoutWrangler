@@ -5,6 +5,8 @@
 // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 // <@$&< copyright end >&$@>
 
+using System.Windows.Forms;
+
 namespace TakeoutWrangler;
 
 internal static class Program
