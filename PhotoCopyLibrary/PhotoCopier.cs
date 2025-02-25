@@ -391,7 +391,7 @@ public class PhotoCopier
             }
 
             ConcurrentQueue<string> retryMediaFiles = new ConcurrentQueue<string>();
-            ReorderDir(allFiles, false, filesToDelete, notBeforeDate, results, retryMediaFiles, "Reorder");
+            ReorderDir(allFiles, inPlace, false, filesToDelete, notBeforeDate, results, retryMediaFiles, "Reorder");
 
             if (_logging != LoggingVerbosity.Quiet)
             {
@@ -419,7 +419,7 @@ public class PhotoCopier
                     _outputHandler($"Retry({retryCount}): {allFiles.Count} entries.");
                 }
 
-                ReorderDir(allFiles, true, filesToDelete, notBeforeDate, results, retryMediaFiles, $"Reorder retry({retryCount})");
+                ReorderDir(allFiles, inPlace, true, filesToDelete, notBeforeDate, results, retryMediaFiles, $"Reorder retry({retryCount})");
 
                 if (!_isCanceled && !retryMediaFiles.IsEmpty)
                 {
@@ -432,14 +432,17 @@ public class PhotoCopier
                 }
             }
 
-            if (!_isCanceled)
+            if (inPlace)
             {
-                RemoveDuplicateAndJunkFiles(filesToDelete, results);
-            }
+                if (!_isCanceled)
+                {
+                    RemoveDuplicateAndJunkFiles(filesToDelete, results);
+                }
 
-            if (!_isCanceled)
-            {
-                RemoveEmptyFolders(results);
+                if (!_isCanceled)
+                {
+                    RemoveEmptyFolders(results);
+                }
             }
 
             return results.Get(ResultCounts.CountKeys.Error) > 0 ? ReturnCode.Error : ReturnCode.Success;
@@ -572,7 +575,14 @@ public class PhotoCopier
         }
     }
 
-    private void ReorderDir(ICollection<string> files, bool inRetry, ConcurrentBag<string> filesToRemove, DateTime notBeforeDate, ResultCounts parent, ConcurrentQueue<string> retryMediaFiles, string context)
+    private void ReorderDir(
+        ICollection<string> files, bool inRetry, 
+        bool inPlace,
+        ConcurrentBag<string> filesToRemove, 
+        DateTime notBeforeDate, 
+        ResultCounts parent, 
+        ConcurrentQueue<string> retryMediaFiles, 
+        string context)
     {
         ResultCounts results = new ResultCounts(parent, context);
         int total = files.Count;
@@ -587,13 +597,13 @@ public class PhotoCopier
                 ParallelOptions parallelOptions = new ParallelOptions();
                 parallelOptions.CancellationToken = _cancel.Token;
 
-                Parallel.ForEach(files, parallelOptions, mediaFile => ReorderWork(inRetry, filesToRemove, notBeforeDate, mediaFile, results, retryMediaFiles));
+                Parallel.ForEach(files, parallelOptions, mediaFile => ReorderWork(inRetry, inPlace, filesToRemove, notBeforeDate, mediaFile, results, retryMediaFiles));
             }
             else
             {
                 foreach (string mediaFile in files)
                 {
-                    ReorderWork(inRetry, filesToRemove, notBeforeDate, mediaFile, results, retryMediaFiles);
+                    ReorderWork(inRetry, inPlace, filesToRemove, notBeforeDate, mediaFile, results, retryMediaFiles);
                 }
             }
         }
@@ -622,20 +632,20 @@ public class PhotoCopier
         }
     }
 
-    private void ReorderWork(bool isRetry, ConcurrentBag<string> filesToRemove, DateTime notBeforeDate, string mediaFile, ResultCounts parent, ConcurrentQueue<string> retryMediaFiles)
+    private void ReorderWork(bool isRetry, bool inPlace, ConcurrentBag<string> filesToRemove, DateTime notBeforeDate, string sourceMediaFile, ResultCounts parent, ConcurrentQueue<string> retryMediaFiles)
     {
         try
         {
             if (_isCanceled) return;
 
-            string mediaPath = Path.GetDirectoryName(mediaFile) ?? string.Empty;
+            string mediaPath = Path.GetDirectoryName(sourceMediaFile) ?? string.Empty;
             string targetDir = string.Empty;
-            string mediaFileName = Path.GetFileName(mediaFile);
+            string mediaFileName = Path.GetFileName(sourceMediaFile);
 
             Dictionary<string, DateTime> dates = new Dictionary<string, DateTime>();
 
             TryGetDateFromMediaFileName(mediaFileName, dates);
-            string fileType = GetDateFromMediaFileContent(mediaFile, notBeforeDate, dates, parent);
+            string fileType = GetDateFromMediaFileContent(sourceMediaFile, notBeforeDate, dates, parent);
 
             // 1. Get date from media content
             if (fileType == null)
@@ -643,45 +653,29 @@ public class PhotoCopier
                 parent.Increment(ResultCounts.CountKeys.Skip);
                 if (_logging == LoggingVerbosity.Verbose)
                 {
-                    _outputHandler($"{(isRetry ? _retryText : "")}Not-media:\"{mediaFile}\".");
+                    _outputHandler($"{(isRetry ? _retryText : "")}Not-media:\"{sourceMediaFile}\".");
                 }
                 return;
             }
 
             DateTime mediaDate = GetBestDate(dates, notBeforeDate);
 
-            if (mediaDate > notBeforeDate)
-            {
-                if (string.Compare(fileType, "jpeg", StringComparison.OrdinalIgnoreCase) == 0 ||
-                    string.Compare(fileType, "tiff", StringComparison.OrdinalIgnoreCase) == 0 ||
-                    string.Compare(fileType, "png", StringComparison.OrdinalIgnoreCase) == 0)
-                {
-                    if (!_listOnly)
-                    {
-                        ExifData exif = new ExifData(mediaFile);
-                        _ = exif.SetDateTaken(mediaDate);
-                        _ = exif.SetTagValue(ExifTag.DateTimeOriginal, mediaDate);
-                        exif.Save();
-                    }
-                }
-            }
+            string newTargetDir = DirectoryNameFromDate(mediaDate, notBeforeDate, false, parent, out targetDir);
+            if (newTargetDir == null) return;
 
-            string newFileDir = DirectoryNameFromDate(mediaDate, notBeforeDate, false, parent, out targetDir);
-            if (newFileDir == null) return;
+            string targetMediaFile = Path.Combine(newTargetDir, mediaFileName);
 
-            string newFilePath = Path.Combine(newFileDir, mediaFileName);
-
-            if (newFilePath.Equals(mediaFile, StringComparison.OrdinalIgnoreCase))
+            if (targetMediaFile.Equals(sourceMediaFile, StringComparison.OrdinalIgnoreCase))
             {
                 parent.Increment(ResultCounts.CountKeys.Duplicate);
                 if (_logging == LoggingVerbosity.Verbose)
                 {
-                    _outputHandler($"{(isRetry ? _retryText : "")}Duplicate existing file:\"{newFilePath}\"");
+                    _outputHandler($"{(isRetry ? _retryText : "")}Duplicate existing file:\"{targetMediaFile}\"");
                 }
                 return;
             }
 
-            if (newFileDir == null)
+            if (newTargetDir == null)
             {
                 if (Debugger.IsAttached)
                 {
@@ -697,10 +691,12 @@ public class PhotoCopier
             {
                 bool alreadyExits = false;
 
-                bool doCopy = ResolveFileConflict(isRetry, mediaFile, parent, ref newFilePath);
+                bool doCopy = ResolveFileConflict(isRetry, sourceMediaFile, parent, ref targetMediaFile);
                 if (doCopy)
                 {
-                    string verb = _listOnly ? "Would move" : "Moved";
+                    string prefix = _listOnly ? "Would " : string.Empty;
+                    string verb = inPlace ? $"{prefix}Move" : $"{prefix}Copy";
+
                     if (_logging != LoggingVerbosity.Quiet)
                     {
                         _outputHandler($"{(isRetry ? _retryText : "")}{verb} file:\"{mediaFileName}\" to \"{Path.Combine(".", targetDir)}\"");
@@ -711,11 +707,36 @@ public class PhotoCopier
                         break;
                     }
 
-                    System.IO.Directory.CreateDirectory(newFileDir);
+                    System.IO.Directory.CreateDirectory(newTargetDir);
                     try
                     {
+                        if (inPlace)
+                        {
+                            File.Move(sourceMediaFile, targetMediaFile);
+                        }
+                        else
+                        {
+                            File.Copy(sourceMediaFile, targetMediaFile);
+                        }
 
-                        File.Move(mediaFile, newFilePath);
+                        if (mediaDate > notBeforeDate)
+                        {
+                            if (string.Compare(fileType, "jpeg", StringComparison.OrdinalIgnoreCase) == 0 ||
+                                string.Compare(fileType, "tiff", StringComparison.OrdinalIgnoreCase) == 0 ||
+                                string.Compare(fileType, "png", StringComparison.OrdinalIgnoreCase) == 0)
+                            {
+                                if (!_listOnly)
+                                {
+                                    ExifData exif = new ExifData(targetMediaFile);
+                                    _ = exif.SetDateTaken(mediaDate);
+                                    _ = exif.SetTagValue(ExifTag.DateTimeOriginal, mediaDate);
+                                    exif.Save();
+                                }
+                            }
+
+                            if (mediaDate > notBeforeDate) File.SetCreationTime(targetMediaFile, mediaDate);
+                        }
+
                         parent.Increment(ResultCounts.CountKeys.Change);
 
                         // the file was copied - exit the loop
@@ -731,11 +752,11 @@ public class PhotoCopier
                             break;
                         }
 
-                        HandleExceptions(ioex, parent, $"Error with existing file: {mediaFile} and {newFilePath}");
+                        HandleExceptions(ioex, parent, $"Error with existing file: {sourceMediaFile} and {targetMediaFile}");
                     }
                     catch (Exception ex)
                     {
-                        HandleExceptions(ex, parent, $"Error with existing file: {mediaFile} and {newFilePath}");
+                        HandleExceptions(ex, parent, $"Error with existing file: {sourceMediaFile} and {targetMediaFile}");
                     }
                 }
                 else
@@ -749,9 +770,9 @@ public class PhotoCopier
                     parent.Increment(ResultCounts.CountKeys.Duplicate);
                     if (_logging != LoggingVerbosity.Quiet)
                     {
-                        _outputHandler($"{(isRetry ? _retryText : "")}Duplicate file:\"{newFilePath}\"");
+                        _outputHandler($"{(isRetry ? _retryText : "")}Duplicate file:\"{targetMediaFile}\"");
                     }
-                    filesToRemove.Add(mediaFile.ToLower());
+                    filesToRemove.Add(sourceMediaFile.ToLower());
                     return;
                 }
             }
@@ -760,15 +781,15 @@ public class PhotoCopier
         {
             if (ioex.HResult == -2147024864)
             {
-                retryMediaFiles.Enqueue(mediaFile);
+                retryMediaFiles.Enqueue(sourceMediaFile);
                 return;
             }
 
-            HandleExceptions(ioex, parent, $"Could not reorder {mediaFile}");
+            HandleExceptions(ioex, parent, $"Could not reorder {sourceMediaFile}");
         }
         catch (Exception ex)
         {
-            HandleExceptions(ex, parent, $"Could not reorder {mediaFile}");
+            HandleExceptions(ex, parent, $"Could not reorder {sourceMediaFile}");
         }
         finally
         {
@@ -1445,9 +1466,9 @@ public class PhotoCopier
         }
     }
 
-    private string DirectoryNameFromDate(DateTime date, DateTime notBeforeDate, bool isRetry, ResultCounts parent, out string targetDir)
+    private string DirectoryNameFromDate(DateTime date, DateTime notBeforeDate, bool isRetry, ResultCounts parent, out string newTargetDir)
     {
-        targetDir = "no-date";
+        newTargetDir = "no-date";
 
         if (date > notBeforeDate)
         {
@@ -1456,14 +1477,14 @@ public class PhotoCopier
             string day = $"{date:dd}";
             string hour = $"{date:HH}";
 
-            targetDir = _pattern.Replace("$y", year, StringComparison.OrdinalIgnoreCase)
+            newTargetDir = _pattern.Replace("$y", year, StringComparison.OrdinalIgnoreCase)
                 .Replace("$m", month)
                 .Replace("$d", day, StringComparison.OrdinalIgnoreCase)
                 .Replace("$h", hour, StringComparison.OrdinalIgnoreCase)
                 .Replace("$M", MonthName(date.Month));
         }
 
-        string newFilePath = Path.GetFullPath(Path.Combine(_destination, targetDir));
+        string newFilePath = Path.GetFullPath(Path.Combine(_destination, newTargetDir));
 
         if (newFilePath == null || !newFilePath.StartsWith(_destination, StringComparison.OrdinalIgnoreCase))
         {
@@ -1744,9 +1765,9 @@ public class PhotoCopier
                         }
                     }
 
-                    string filePath = null;
-                    string folderPath = DirectoryNameFromDate(mediaDate, notBeforeDate, isRetry, parent, out string targetDir);
-                    if (!_listOnly) System.IO.Directory.CreateDirectory(folderPath);
+                    string targetMediaFile = null;
+                    string newTargetDir = DirectoryNameFromDate(mediaDate, notBeforeDate, isRetry, parent, out string targetDir);
+                    if (!_listOnly) System.IO.Directory.CreateDirectory(newTargetDir);
 
                     string name = Path.GetFileNameWithoutExtension(entry.Name);
                     string ext = Path.GetExtension(entry.Name);
@@ -1755,18 +1776,18 @@ public class PhotoCopier
                     int loopCount = 0;
                     do
                     {
-                        filePath = Path.Combine(folderPath, NewEntryName(name, ext, loopCount++));
-                        if (!File.Exists(filePath))
+                        targetMediaFile = Path.Combine(newTargetDir, NewEntryName(name, ext, loopCount++));
+                        if (!File.Exists(targetMediaFile))
                         {
                             try
                             {
                                 // the file does not exist - copy the entry to the file
-                                using (FileStream fileStream = new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.None, 4096, true))
+                                using (FileStream fileStream = new FileStream(targetMediaFile, FileMode.Create, FileAccess.Write, FileShare.None, 4096, true))
                                 {
                                     zipStream.Seek(0, SeekOrigin.Begin);
 
                                     string verb = _listOnly ? "Would copy" : "Copied";
-                                    if (_logging != LoggingVerbosity.Quiet) _outputHandler($"{(isRetry ? _retryText : "")}{verb} file:\"{entry.Name}\" to \"{filePath}\"");
+                                    if (_logging != LoggingVerbosity.Quiet) _outputHandler($"{(isRetry ? _retryText : "")}{verb} file:\"{entry.Name}\" to \"{Path.Combine(".", targetDir)}\"");
 
                                     if (!_listOnly)
                                     {
@@ -1783,11 +1804,11 @@ public class PhotoCopier
                                     return;
                                 }
 
-                                HandleExceptions(ioex, parent, $"Could not create {filePath}");
+                                HandleExceptions(ioex, parent, $"Could not create {targetMediaFile}");
                             }
                             catch (Exception ex)
                             {
-                                HandleExceptions(ex, parent, $"Could not create {filePath}");
+                                HandleExceptions(ex, parent, $"Could not create {targetMediaFile}");
                             }
 
                             break;
@@ -1802,14 +1823,14 @@ public class PhotoCopier
                                 zipHash = SHA512.Create().ComputeHash(zipStream);
                             }
 
-                            using (FileStream fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.None, 4096, true))
+                            using (FileStream fileStream = new FileStream(targetMediaFile, FileMode.Open, FileAccess.Read, FileShare.None, 4096, true))
                             {
                                 byte[] fileHash = SHA512.Create().ComputeHash(fileStream);
                                 if (zipHash.SequenceEqual(fileHash))
                                 {
                                     // the files are the same - the entry is a duplicate
                                     string text = _listOnly ? "List(duplicate)" : "Duplicate";
-                                    if (_logging == LoggingVerbosity.Verbose) _outputHandler($"{(isRetry ? _retryText : "")}{text}:\"{entry.Name}\" in \"{filePath}\"");
+                                    if (_logging == LoggingVerbosity.Verbose) _outputHandler($"{(isRetry ? _retryText : "")}{text}:\"{entry.Name}\" in \"{targetMediaFile}\"");
                                     parent.Increment(ResultCounts.CountKeys.Duplicate);
 
                                     break;
@@ -1824,16 +1845,16 @@ public class PhotoCopier
                                 return;
                             }
 
-                            HandleExceptions(ioex, parent, $"Could not read {filePath}");
+                            HandleExceptions(ioex, parent, $"Could not read {targetMediaFile}");
                         }
                         catch (Exception ex)
                         {
-                            HandleExceptions(ex, parent, $"Could not read {filePath}");
+                            HandleExceptions(ex, parent, $"Could not read {targetMediaFile}");
                         }
                     }
                     while (!_isCanceled);
 
-                    if (mediaDate > notBeforeDate) File.SetCreationTime(filePath, mediaDate);
+                    if (mediaDate > notBeforeDate) File.SetCreationTime(targetMediaFile, mediaDate);
                 }
             }
         }
