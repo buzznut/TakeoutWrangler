@@ -5,7 +5,7 @@
 // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 // <@$&< copyright end >&$@>
 
-using TakeoutWrangler;
+using TakeoutWranglerUI;
 using System.Drawing;
 using System.Windows.Forms;
 

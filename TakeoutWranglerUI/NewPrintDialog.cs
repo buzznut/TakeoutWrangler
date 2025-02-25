@@ -1,15 +1,15 @@
 ﻿using System.Drawing.Printing;
 using System.Text;
 using System.ComponentModel;
-using System.Reflection.Metadata;
 
 namespace TakeoutWranglerUI;
 
 public partial class NewPrintDialog : Form
 {
     private bool initd;
+    private NewPrintDocument document;
 
-    public delegate StringBuilder GetContent(bool selected);
+    public delegate StringBuilder GetContent(bool useSelection);
     public GetContent Content;
     public StringBuilder StringToPrint;
     public Font PrintFont;
@@ -20,27 +20,39 @@ public partial class NewPrintDialog : Form
     public bool HadOutput;
 
     [DesignerSerializationVisibility(DesignerSerializationVisibility.Visible)]
-    public PrintDocument Document
+    public NewPrintDocument Document
     {
-        get => printPreviewControl.Document;
+        get => document;
         private set
         {
             value.QueryPageSettings += printDocument_QueryPageSettings;
             value.PrintPage += printDocument_PrintPage;
             value.BeginPrint += printDocument_BeginPrint;
             value.EndPrint += printDocument_EndPrint;
-            printPreviewControl.Document = value;
+            if (value.IsPreview)
+            {
+                printPreviewControl.Document = value;
+                document = value;
+            }
+            else
+            {
+                printPreviewControl.Document = null;
+                document = value;
+            }
         }
     }
 
     [DesignerSerializationVisibility(DesignerSerializationVisibility.Visible)]
     public bool UseAntiAlias
     {
-        get => printPreviewControl.UseAntiAlias;
+        get => Document.IsPreview ? printPreviewControl.UseAntiAlias : false;
         set
         {
-            StringToPrint = Content(radioButtonSelection.Checked);
-            printPreviewControl.UseAntiAlias = value;
+            StringToPrint = Content(Document.PrinterSettings.PrintRange == PrintRange.Selection);
+            if (Document.IsPreview)
+            {
+                printPreviewControl.UseAntiAlias = value;
+            }
         }
     }
 
@@ -52,10 +64,10 @@ public partial class NewPrintDialog : Form
         SuspendLayout();
         InitializeComponent();
 
-        Document = new PrintDocument();
-        StringToPrint = Content(radioButtonSelection.Checked);
-
+        Document = new NewPrintDocument();
         printPreviewControl.StartPageChanged += previewControl_StartPageChanged;
+
+        numericUpDownCopies.Value = 1;
 
         PrinterSettings ps = new PrinterSettings();
         foreach (string printer in PrinterSettings.InstalledPrinters)
@@ -312,7 +324,11 @@ public partial class NewPrintDialog : Form
         {
             Document.PrinterSettings.PrintRange = PrintRange.AllPages;
             ShowSettings(Document.PrinterSettings);
-            printPreviewControl.InvalidatePreview();
+            if (Document.IsPreview)
+            {
+                StringToPrint = Content(Document.PrinterSettings.PrintRange == PrintRange.Selection);
+                printPreviewControl.InvalidatePreview();
+            }
         }
     }
 
@@ -323,7 +339,11 @@ public partial class NewPrintDialog : Form
         if (radioButtonSelection.Checked)
         {
             Document.PrinterSettings.PrintRange = PrintRange.Selection;
-            printPreviewControl.InvalidatePreview();
+            if (Document.IsPreview)
+            {
+                StringToPrint = Content(Document.PrinterSettings.PrintRange == PrintRange.Selection);
+                printPreviewControl.InvalidatePreview();
+            }
         }
     }
 
@@ -342,7 +362,11 @@ public partial class NewPrintDialog : Form
             Document.PrinterSettings.ToPage = toValue;
 
             ShowSettings(Document.PrinterSettings);
-            printPreviewControl.InvalidatePreview();
+            if (Document.IsPreview)
+            {
+                StringToPrint = Content(Document.PrinterSettings.PrintRange == PrintRange.Selection);
+                printPreviewControl.InvalidatePreview();
+            }
         }
     }
 
@@ -351,23 +375,41 @@ public partial class NewPrintDialog : Form
         if (sender is TextBox tb && int.TryParse(tb.Text, out int value)) return;
         e.Cancel = true;
     }
+
+    private void textBoxToPage_Validating(object sender, CancelEventArgs e)
+    {
+        if (sender is TextBox tb && int.TryParse(tb.Text, out int value)) return;
+        e.Cancel = true;
+    }
+
+    private void buttonPreview_Click(object sender, EventArgs e)
+    {
+        if (!Document.IsPreview)
+        {
+            NewPrintDocument oldValue = Document;
+            Document = new NewPrintDocument() { IsPreview = true };
+            if (oldValue != null)
+            {
+                Document.PrinterSettings.Copies = oldValue.PrinterSettings.Copies;
+                Document.PrinterSettings.PrintRange = oldValue.PrinterSettings.PrintRange;
+                oldValue.Dispose();
+            }
+        }
+
+        StringToPrint = Content(Document.PrinterSettings.PrintRange == PrintRange.Selection);
+        buttonPreview.Enabled = false;
+    }
+
+    private void buttonPrint_Click(object sender, EventArgs e)
+    {
+        StringToPrint = Content(Document.PrinterSettings.PrintRange == PrintRange.Selection);
+        Document.PrinterSettings.Copies = (short)Math.Max(1, Math.Min(numericUpDownCopies.Maximum, Convert.ToInt32(numericUpDownCopies.Value)));
+
+        Document.Print();
+    }
 }
 
-public class NewPrintDocumentX : PrintDocument
+public class NewPrintDocument : PrintDocument
 {
-    public int PageNumber;
-    public bool HadOutput;
     public bool IsPreview;
-
-    protected override void Dispose(bool disposing)
-    {
-        base.Dispose(disposing);
-        if (disposing)
-        {
-        }
-    }
-
-    public void Done()
-    {
-    }
 }

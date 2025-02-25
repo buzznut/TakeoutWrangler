@@ -8,7 +8,7 @@
 using System.Drawing;
 using System.Windows.Forms;
 
-namespace TakeoutWrangler
+namespace TakeoutWranglerUI
 {
     partial class MainForm
     {
@@ -41,7 +41,7 @@ namespace TakeoutWrangler
                 }
 
                 helpStreams.Clear();
-                worker?.Dispose();
+                workerImage?.Dispose();
             }
 
             base.Dispose(disposing);
@@ -81,6 +81,7 @@ namespace TakeoutWrangler
             textBoxStatus = new TextBox();
             labelProgress = new Label();
             timerIsRunning = new System.Windows.Forms.Timer(components);
+            textBoxProgressType = new TextBox();
             menuStripMainMenu.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)listBoxView).BeginInit();
             SuspendLayout();
@@ -225,6 +226,7 @@ namespace TakeoutWrangler
             listBoxView.Size = new Size(632, 284);
             listBoxView.TabIndex = 1;
             listBoxView.CellPainting += listBoxView_CellPainting;
+            listBoxView.KeyDown += listBoxView_KeyDown;
             // 
             // Column
             // 
@@ -248,7 +250,7 @@ namespace TakeoutWrangler
             buttonRun.TabIndex = 2;
             buttonRun.Text = "Execute";
             buttonRun.UseVisualStyleBackColor = true;
-            buttonRun.Click += buttonRun_ClickAsync;
+            buttonRun.Click += buttonRun_Click;
             // 
             // printDialog
             // 
@@ -260,11 +262,12 @@ namespace TakeoutWrangler
             // 
             textBoxStatus.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
             textBoxStatus.BorderStyle = BorderStyle.FixedSingle;
-            textBoxStatus.Location = new Point(69, 322);
+            textBoxStatus.Location = new Point(62, 322);
             textBoxStatus.Name = "textBoxStatus";
             textBoxStatus.ReadOnly = true;
             textBoxStatus.Size = new Size(101, 23);
             textBoxStatus.TabIndex = 3;
+            textBoxStatus.Text = "Test";
             textBoxStatus.TextAlign = HorizontalAlignment.Center;
             // 
             // labelProgress
@@ -283,11 +286,23 @@ namespace TakeoutWrangler
             timerIsRunning.Interval = 250;
             timerIsRunning.Tick += TimerIsRunning_Tick;
             // 
+            // textBoxProgressType
+            // 
+            textBoxProgressType.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
+            textBoxProgressType.BorderStyle = BorderStyle.None;
+            textBoxProgressType.Location = new Point(168, 324);
+            textBoxProgressType.Name = "textBoxProgressType";
+            textBoxProgressType.ReadOnly = true;
+            textBoxProgressType.Size = new Size(264, 16);
+            textBoxProgressType.TabIndex = 5;
+            textBoxProgressType.Text = "Test";
+            // 
             // MainForm
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(642, 353);
+            Controls.Add(textBoxProgressType);
             Controls.Add(labelProgress);
             Controls.Add(textBoxStatus);
             Controls.Add(buttonRun);
@@ -332,5 +347,6 @@ namespace TakeoutWrangler
         private DataGridViewTextBoxColumn Column;
         private ToolStripMenuItem toolStripMenuTakeout;
         private ToolStripMenuItem toolStripMenuItemCheckForUpdates;
+        private TextBox textBoxProgressType;
     }
 }

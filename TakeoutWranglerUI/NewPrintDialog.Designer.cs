@@ -54,6 +54,7 @@
             radioButtonAll = new RadioButton();
             labelPage = new Label();
             textBoxPage = new TextBox();
+            buttonPreview = new Button();
             ((System.ComponentModel.ISupportInitialize)numericUpDownCopies).BeginInit();
             ((System.ComponentModel.ISupportInitialize)numericUpDownDisplayPageCount).BeginInit();
             groupBoxPageRange.SuspendLayout();
@@ -114,9 +115,12 @@
             // numericUpDownCopies
             // 
             numericUpDownCopies.Location = new Point(14, 128);
+            numericUpDownCopies.Maximum = new decimal(new int[] { 5, 0, 0, 0 });
+            numericUpDownCopies.Minimum = new decimal(new int[] { 1, 0, 0, 0 });
             numericUpDownCopies.Name = "numericUpDownCopies";
             numericUpDownCopies.Size = new Size(77, 23);
             numericUpDownCopies.TabIndex = 7;
+            numericUpDownCopies.Value = new decimal(new int[] { 1, 0, 0, 0 });
             // 
             // labelColorMode
             // 
@@ -172,6 +176,7 @@
             buttonPrint.TabIndex = 15;
             buttonPrint.Text = "Print";
             buttonPrint.UseVisualStyleBackColor = true;
+            buttonPrint.Click += buttonPrint_Click;
             // 
             // buttonNext
             // 
@@ -237,7 +242,7 @@
             textBoxToPage.Size = new Size(49, 23);
             textBoxToPage.TabIndex = 23;
             textBoxToPage.TextAlign = HorizontalAlignment.Center;
-            textBoxToPage.Validating += textBoxFromPage_Validating;
+            textBoxToPage.Validating += textBoxToPage_Validating;
             // 
             // labelPageTo
             // 
@@ -312,11 +317,23 @@
             textBoxPage.TextAlign = HorizontalAlignment.Center;
             textBoxPage.WordWrap = false;
             // 
+            // buttonPreview
+            // 
+            buttonPreview.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
+            buttonPreview.Location = new Point(396, 405);
+            buttonPreview.Name = "buttonPreview";
+            buttonPreview.Size = new Size(96, 23);
+            buttonPreview.TabIndex = 24;
+            buttonPreview.Text = "Show Preview";
+            buttonPreview.UseVisualStyleBackColor = true;
+            buttonPreview.Click += buttonPreview_Click;
+            // 
             // NewPrintDialog
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(660, 437);
+            Controls.Add(buttonPreview);
             Controls.Add(textBoxPage);
             Controls.Add(labelPage);
             Controls.Add(groupBoxPageRange);
@@ -379,5 +396,6 @@
         private TextBox textBoxToPage;
         private Label labelPage;
         private TextBox textBoxPage;
+        private Button buttonPreview;
     }
 }

@@ -7,7 +7,7 @@
 
 using System.Windows.Forms;
 
-namespace TakeoutWrangler;
+namespace TakeoutWranglerUI;
 
 internal static class Program
 {

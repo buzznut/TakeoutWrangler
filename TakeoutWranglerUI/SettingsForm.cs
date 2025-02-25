@@ -7,18 +7,19 @@
 
 using PhotoCopyLibrary;
 using System.Text;
-using System.Windows.Forms;
 
-namespace TakeoutWrangler;
+namespace TakeoutWranglerUI;
 
 public partial class SettingsForm : Form
 {
     public string Source;
     public string Destination;
+    public string Backup;
     public string Filter;
     public string Pattern;
     public bool ListOnly;
     public bool Parallel;
+    public string Junk;
     public LoggingVerbosity Logging;
     public PhotoCopierActions Behavior;
     public PhotoCopier PhotoCopierSession;
@@ -56,6 +57,8 @@ public partial class SettingsForm : Form
         textBoxDestination.Text = Destination;
         textBoxFileFilter.Text = Filter;
         textBoxDestinationPattern.Text = Pattern;
+        textBoxJunkFiles.Text = Junk;
+        textBoxReorderBackupFolder.Text = Backup;
 
         comboBoxActions.SelectedItem = Behavior;
         comboBoxActions.SelectedIndex = comboBoxActions.FindStringExact(Behavior.ToString());
@@ -76,16 +79,19 @@ public partial class SettingsForm : Form
         bool changed = false;
         string reason;
 
-        changed |= string.Compare(Source, textBoxSource.Text, StringComparison.OrdinalIgnoreCase) != 0;
-        Source = textBoxSource.Text;
+        changed |= string.Compare(Source, textBoxSource.Text) != 0;
+        Source = textBoxSource.Text.Trim();
 
-        changed |= string.Compare(Filter, textBoxFileFilter.Text, StringComparison.OrdinalIgnoreCase) != 0;
-        Filter = textBoxFileFilter.Text;
+        changed |= string.Compare(Filter, textBoxFileFilter.Text) != 0;
+        Filter = textBoxFileFilter.Text.Trim();
 
-        changed |= string.Compare(Destination, textBoxDestination.Text, StringComparison.OrdinalIgnoreCase) != 0;
-        Destination = textBoxDestination.Text;
+        changed |= string.Compare(Destination, textBoxDestination.Text) != 0;
+        Destination = textBoxDestination.Text.Trim();
 
-        changed |= string.Compare(Pattern, textBoxDestinationPattern.Text, StringComparison.OrdinalIgnoreCase) != 0;
+        changed |= string.Compare(Backup, textBoxReorderBackupFolder.Text) != 0;
+        Backup = textBoxReorderBackupFolder.Text.Trim();
+
+        changed |= string.Compare(Pattern, textBoxDestinationPattern.Text) != 0;
         Pattern = textBoxDestinationPattern.Text;
 
         PhotoCopierActions behavior = (comboBoxActions.SelectedItem as PhotoCopierActions?).GetValueOrDefault(PhotoCopierActions.Copy);
@@ -102,9 +108,13 @@ public partial class SettingsForm : Form
         changed |= Parallel != checkBoxUseParallel.Checked;
         Parallel = checkBoxUseParallel.Checked;
 
+        changed |= string.Compare(Junk, textBoxJunkFiles.Text) != 0;
+        Junk = textBoxJunkFiles.Text.Trim();
+
         if (changed)
         {
-            if (!PhotoCopier.ValidateSource(textBoxSource.Text, Filter, out reason))
+            PhotoCopier copier = new PhotoCopier(null, null);
+            if (Behavior != PhotoCopierActions.Reorder && !copier.ValidateSource(textBoxSource.Text, Filter, behavior, null, out reason))
             {
                 DialogResult validateResult = MessageBox.Show($"{reason}. Continue?", "Validate Source", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
                 if (validateResult == DialogResult.No)
@@ -114,17 +124,42 @@ public partial class SettingsForm : Form
                 }
             }
 
-            if (!PhotoCopier.ValidateDestination(textBoxDestination.Text, out reason))
+            if (!copier.ValidateDestination(textBoxDestination.Text, null, out reason))
             {
                 MessageBox.Show(reason, "Validate Target", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 DialogResult = DialogResult.None;
                 return;
             }
 
-            DialogResult result = MessageBox.Show("Keep changed values?", "Settings have changed", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
-            if (result == DialogResult.Yes)
+            if (!copier.ValidatePattern(textBoxDestinationPattern.Text, null, out reason))
             {
-                DialogResult = DialogResult.Yes;
+                MessageBox.Show(reason, "Validate Pattern", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                DialogResult = DialogResult.None;
+                return;
+            }
+
+            if (!copier.ValidateJunk(textBoxJunkFiles.Text, null, out reason))
+            {
+                MessageBox.Show(reason, "Validate Junk", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                DialogResult = DialogResult.None;
+                return;
+            }
+
+            bool inPlace = Source.Equals(Destination, StringComparison.OrdinalIgnoreCase);
+            if (inPlace && !copier.ValidateReorderBackupFolder(textBoxReorderBackupFolder.Text, null, out reason))
+            {
+                MessageBox.Show(reason, "Validate Reorder backup folder", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                DialogResult = DialogResult.None;
+                return;
+            }
+
+            if (changed)
+            {
+                DialogResult result = MessageBox.Show("Keep changed values?", "Settings have changed", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+                if (result == DialogResult.Yes)
+                {
+                    DialogResult = DialogResult.Yes;
+                }
             }
         }
     }
@@ -174,13 +209,10 @@ public partial class SettingsForm : Form
         switch (((PhotoCopierActions?)comboBoxActions.SelectedItem).GetValueOrDefault(PhotoCopierActions.Copy))
         {
             case PhotoCopierActions.Copy:
-                sb.Append("Copy media files from takeout zip archives to folder");
+                sb.Append("Copy media files from takeout zip archives to folder.");
                 break;
             case PhotoCopierActions.Reorder:
-                sb.Append("Reorder media files to match new file pattern");
-                break;
-            case PhotoCopierActions.Overwrite:
-                sb.Append("Overwrite media files from takeout zip archives to folder");
+                sb.Append("Reorder media files to match new file pattern.");
                 break;
         }
 
@@ -190,7 +222,54 @@ public partial class SettingsForm : Form
     private void comboBoxActions_SelectedIndexChanged(object sender, EventArgs e)
     {
         PhotoCopierActions newBehavior = (comboBoxActions.SelectedItem as PhotoCopierActions?).GetValueOrDefault(PhotoCopierActions.Copy);
-        groupBoxSource.Enabled = newBehavior != PhotoCopierActions.Reorder;
+        SettingsChanged(newBehavior == PhotoCopierActions.Reorder);
+    }
+
+    private void SettingsChanged(bool isReorder)
+    {
+        bool inPlace = false;
+        if (isReorder)
+        {
+            inPlace = textBoxSource.Text.Equals(textBoxDestination.Text, StringComparison.OrdinalIgnoreCase);
+            labelSourceDescription.Text = inPlace ? TWContstants.SourceDescriptionInPlace : TWContstants.SourceDescriptionReorder;
+        }
+        else
+        {
+            labelSourceDescription.Text = TWContstants.SourceDescriptionCopy;
+        }
+
+        labelJunkFiles.Enabled = isReorder;
+        textBoxJunkFiles.Enabled = isReorder;
+        labelJunkComma.Enabled = isReorder;
+
+        labelFilter.Enabled = !isReorder;
+        textBoxFileFilter.Enabled = !isReorder;
+        labelArchiveFilter.Enabled = !isReorder;
+
+        labelReorderBackup.Enabled = inPlace;
+        textBoxReorderBackupFolder.Enabled = inPlace;
+        buttonReorderBackupBrowse.Enabled = inPlace;
+
         SetActionDescription();
+    }
+
+    private void buttonReorderBackupBrowse_Click(object sender, EventArgs e)
+    {
+        string folder = SelectFolder(textBoxReorderBackupFolder.Text);
+        if (folder != null)
+        {
+            textBoxReorderBackupFolder.Text = folder;
+        }
+    }
+
+    private void checkBoxReorderInPlace_CheckedChanged(object sender, EventArgs e)
+    {
+        PhotoCopierActions newBehavior = (comboBoxActions.SelectedItem as PhotoCopierActions?).GetValueOrDefault(PhotoCopierActions.Copy);
+        SettingsChanged(newBehavior == PhotoCopierActions.Reorder);
+    }
+
+    private void textBox_TextChanged(object sender, EventArgs e)
+    {
+        SettingsChanged(Behavior == PhotoCopierActions.Reorder);
     }
 }

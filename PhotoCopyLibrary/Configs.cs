@@ -7,13 +7,6 @@
 
 namespace PhotoCopyLibrary;
 
-public enum ConfigResult
-{
-    InvalidKey,
-    Found,
-    UsedDefault
-}
-
 /// <summary>
 /// Read various types of configuration values. Supports
 /// appsettings.json, and commandline arguments.
@@ -69,25 +62,30 @@ public class Configs
 
     public AppSettingsJson LoadAppSettings(string keyRoot = "Data:Settings")
     {
-        string settingsFile;
+        string localAppDataPath = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        string settingsFile = Path.Combine(localAppDataPath, "Programs", "Stewart A. Nutter", "TakeoutWrangler", "config.json");
 
         string appPath = AppHelpers.GetApplicationDir();
         if (string.IsNullOrEmpty(appPath)) throw new ApplicationException("Could not get application directory");
 
-        settingsFile = Path.Combine(appPath, "appsettings.json");
         if (!File.Exists(settingsFile))
         {
             try
             {
-                string fileName = Path.GetFileName(settingsFile);
-                string defaultSettings = Path.Combine(appPath, $"default.{fileName}");
+                string defaultSettings = Path.Combine(appPath, $"default.appsettings.json");
                 if (!File.Exists(defaultSettings))
                 {
                     // app settings file does not exist and neither does the default file
                     throw new ApplicationException($"Could not find {defaultSettings} file");
                 }
 
-                File.Copy(defaultSettings, fileName);
+                string settingsDir = Path.GetDirectoryName(settingsFile);
+                if (!string.IsNullOrEmpty(settingsDir))
+                {
+                    Directory.CreateDirectory(settingsDir);
+                }
+
+                File.Copy(defaultSettings, settingsFile);
             }
             catch
             {
@@ -232,7 +230,7 @@ public class Configs
         return true;
     }
 
-    public ConfigResult GetBool(string key, out bool value)
+    public bool TryGetBool(string key, out bool value)
     {
         values.TryGetValue(key, out object valueObject);
         pTypes.TryGetValue(key, out ConfigParam pType);
@@ -241,16 +239,16 @@ public class Configs
         {
             if (throwIfNotDefined) throw new KeyNotFoundException($"Invalid key:{key}");
             value = false;
-            return ConfigResult.InvalidKey;
+            return false;
         }
 
         if (ParseBoolObject(valueObject, out value))
         {
-            return ConfigResult.Found;
+            return true;
         }
 
         ParseBoolObject(pType.Default, out value);
-        return ConfigResult.UsedDefault;
+        return true;
     }
 
     private bool ParseBoolObject(object valueObject, out bool value)
@@ -287,7 +285,7 @@ public class Configs
         return false;
     }
 
-    public ConfigResult GetInt(string key, out int value)
+    public bool TryGetInt(string key, out int value)
     {
         values.TryGetValue(key, out object valueObject);
         pTypes.TryGetValue(key, out ConfigParam pType);
@@ -296,16 +294,16 @@ public class Configs
         {
             if (throwIfNotDefined) throw new KeyNotFoundException($"Invalid key:{key}");
             value = 0;
-            return ConfigResult.InvalidKey;
+            return false;
         }
 
         if (ParseIntObject(valueObject, out value))
         {
-            return ConfigResult.Found;
+            return true;
         }
 
         ParseIntObject(pType.Default, out value);
-        return ConfigResult.UsedDefault;
+        return true;
     }
 
     private bool ParseIntObject(object valueObject, out int value)
@@ -331,7 +329,7 @@ public class Configs
         return false;
     }
 
-    public ConfigResult GetString(string key, out string value)
+    public bool TryGetString(string key, out string value)
     {
         bool gotValue = values.TryGetValue(key, out object valueObject);
         pTypes.TryGetValue(key, out ConfigParam pType);
@@ -340,7 +338,7 @@ public class Configs
         {
             if (throwIfNotDefined) throw new KeyNotFoundException($"Invalid key:{key}");
             value = null;
-            return ConfigResult.InvalidKey;
+            return false;
         }
 
         string valueText = valueObject?.ToString();
@@ -350,15 +348,14 @@ public class Configs
             defaultText = v;
         }
 
-        value = valueText;
+        value = valueText?.Trim();
 
         if (!gotValue)
         {
             value = defaultText;
-            return ConfigResult.UsedDefault;
         }
 
-        return ConfigResult.Found;
+        return true;
     }
 
     public static bool ValidatePath(string dir, string context, List<string> reasons)

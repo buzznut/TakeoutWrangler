@@ -10,8 +10,7 @@ namespace PhotoCopyLibrary;
 public enum PhotoCopierActions
 {
     Copy,
-    Overwrite,
-    Reorder
+    Reorder,
 }
 
 public enum LoggingVerbosity
@@ -41,5 +40,5 @@ public enum StatusCode
 {
     Progress,
     Total,
-    Finish
+    More
 }

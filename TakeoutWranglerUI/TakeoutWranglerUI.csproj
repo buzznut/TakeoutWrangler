@@ -15,7 +15,7 @@
     <ApplicationIcon>photos.ico</ApplicationIcon>
     <PackageIcon>photos.ico</PackageIcon>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <StartupObject>TakeoutWrangler.Program</StartupObject>
+    <StartupObject>TakeoutWranglerUI.Program</StartupObject>
     <ProduceReferenceAssembly>False</ProduceReferenceAssembly>
   </PropertyGroup>
 

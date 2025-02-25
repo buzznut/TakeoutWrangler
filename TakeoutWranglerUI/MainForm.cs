@@ -13,14 +13,13 @@ using System.Diagnostics;
 using System.Net;
 using System.Runtime.InteropServices;
 using System.Text;
-using TakeoutWranglerUI;
 
-namespace TakeoutWrangler;
+namespace TakeoutWranglerUI;
 
 public partial class MainForm : Form
 {
     [DllImport("user32.dll", SetLastError = true)]
-    static extern bool PostMessage(IntPtr hwnd, uint Msg, IntPtr wParam, IntPtr lParam);
+    static extern IntPtr SendMessage(IntPtr hwnd, uint Msg, IntPtr wParam, IntPtr lParam);
 
     [DllImport("user32.dll", CharSet = CharSet.Auto)]
     public static extern uint RegisterWindowMessage(string lpString);
@@ -33,6 +32,7 @@ public partial class MainForm : Form
     private static uint viewWarning;
     private static uint viewError;
     private static uint viewStatus;
+    private static uint viewType;
     private static IntPtr myHandle;
     private bool showNoUpdateAvailable;
     private readonly string[] helpFiles = { "Help.pdf", "About.pdf", "HowToGetYourPhotosFromGoogleTakeout.pdf" };
@@ -42,11 +42,12 @@ public partial class MainForm : Form
         { "About.pdf", null },
         { "HowToGetYourPhotosFromGoogleTakeout.pdf", null }
     };
-    private readonly BackgroundWorker worker;
+    private readonly BackgroundWorker workerImage;
+    private readonly BackgroundWorker workerRunner;
     private readonly string appDir = AppHelpers.GetApplicationDir();
     private bool pagesLoaded;
     private readonly List<ListBoxItem> items = new List<ListBoxItem>();
-    private const string updateUrl = "https://raw.githubusercontent.com/buzznut/TakeoutWrangler/refs/heads/master/Installers/TakeoutWrangler/Output/TakeoutWranglerUIupdate.xml";
+    private readonly string updateUrl = TWContstants.UpdateUrl;
     private static int totalItems;
     private static int progress;
 
@@ -58,27 +59,53 @@ public partial class MainForm : Form
     {
         SuspendLayout();
         InitializeComponent();
-
         myHandle = Handle;
         viewMessage = RegisterWindowMessage("UIView_Message");
         viewWarning = RegisterWindowMessage("UIView_Warning");
         viewError = RegisterWindowMessage("UIView_Error");
         viewStatus = RegisterWindowMessage("UIView_Status");
+        viewType = RegisterWindowMessage("UIView_Type");
+
+#if !DEBUG
+        textBoxStatus.Text = string.Empty;
+        textBoxProgressType.Text = string.Empty;
+#endif
         ResumeLayout(true);
 
-        worker = new BackgroundWorker
+        workerImage = new BackgroundWorker
         {
             WorkerSupportsCancellation = true,
             WorkerReportsProgress = true
         };
 
-        worker.DoWork += ResolveNextImage;
-        worker.RunWorkerCompleted += ResolveNextImageCompleted;
+        workerImage.DoWork += ResolveNextImage;
+        workerImage.RunWorkerCompleted += ResolveNextImageCompleted;
+
+        workerRunner = new BackgroundWorker
+        {
+            WorkerSupportsCancellation = true
+        };
+
+        workerRunner.DoWork += Runner;
+        workerRunner.RunWorkerCompleted += RunnerCompleted;
 
         StartPageResolve(0);
 
         AutoUpdater.CheckForUpdateEvent += UpdateCheckEvent;
         this.args = args;
+    }
+
+    private void RunnerCompleted(object sender, RunWorkerCompletedEventArgs e)
+    {
+        if (sender is not BackgroundWorker) return;
+    }
+
+    private void Runner(object sender, DoWorkEventArgs e)
+    {
+        if (sender is not BackgroundWorker) return;
+        PhotoCopier copier = e.Argument as PhotoCopier;
+        if (copier == null) return;
+        e.Result = copier.Run();
     }
 
     private void StartPageResolve(int index)
@@ -91,7 +118,7 @@ public partial class MainForm : Form
             Index = index
         };
 
-        worker.RunWorkerAsync(data);
+        workerImage.RunWorkerAsync(data);
     }
 
     private void ResolveNextImageCompleted(object sender, RunWorkerCompletedEventArgs e)
@@ -103,7 +130,7 @@ public partial class MainForm : Form
 
         if (e.Cancelled)
         {
-            _ = MessageBox.Show("Operation was canceled");
+            _ = MessageBox.Show(TWContstants.CanceledOperation);
         }
         else if (e.Error != null)
         {
@@ -158,22 +185,37 @@ public partial class MainForm : Form
             string text = Marshal.PtrToStringAuto(m.WParam, Convert.ToInt32(m.LParam));
             items.Add(new ListBoxItem() { ItemColor = listBoxView.ForeColor, Message = text ?? string.Empty });
             timerView.Start();
+            m.Result = IntPtr.Zero;
+            return;
         }
         else if (m.Msg == viewStatus)
         {
-            textBoxStatus.Text = $"{++progress}/{totalItems}";
+            textBoxStatus.Text = $"{progress++}/{totalItems}";
+            m.Result = IntPtr.Zero;
+            return;
+        }
+        else if (m.Msg == viewType)
+        {
+            string text = Marshal.PtrToStringAuto(m.WParam, Convert.ToInt32(m.LParam));
+            textBoxProgressType.Text = text;
+            m.Result = IntPtr.Zero;
+            return;
         }
         else if (m.Msg == viewWarning)
         {
             string text = Marshal.PtrToStringAuto(m.WParam, Convert.ToInt32(m.LParam));
             items.Add(new ListBoxItem() { ItemColor = System.Drawing.Color.DarkOrange, Message = text ?? string.Empty });
             timerView.Start();
+            m.Result = IntPtr.Zero;
+            return;
         }
         else if (m.Msg == viewError)
         {
             string text = Marshal.PtrToStringAuto(m.WParam, Convert.ToInt32(m.LParam));
             items.Add(new ListBoxItem() { ItemColor = System.Drawing.Color.FromArgb(214, 4, 9), Message = text ?? string.Empty });
             timerView.Start();
+            m.Result = IntPtr.Zero;
+            return;
         }
 
         base.WndProc(ref m);
@@ -189,19 +231,34 @@ public partial class MainForm : Form
             settings = configs.LoadAppSettings();
             configs.ParseArgs(args);
 
-            configs.GetString("source", out string sourceDir);
-            configs.GetString("destination", out string destinationDir);
-            configs.GetString("pattern", out string pattern);
-            configs.GetString("filter", out string fileFilter);
-            configs.GetString("logging", out string loggingString);
-            configs.GetString("action", out string actionString);
-            configs.GetBool("listonly", out bool listOnly);
-            configs.GetBool("parallel", out bool parallel);
+            configs.TryGetString("source", out string sourceDir);
+            configs.TryGetString("destination", out string destinationDir);
+            configs.TryGetString("backup", out string backup);
+            configs.TryGetString("pattern", out string pattern);
+            configs.TryGetString("filter", out string fileFilter);
+            configs.TryGetString("logging", out string loggingString);
+            configs.TryGetString("action", out string actionString);
+            configs.TryGetBool("listonly", out bool listOnly);
+            configs.TryGetBool("parallel", out bool parallel);
+            configs.TryGetString("junk", out string junk);
 
             if (!Enum.TryParse(actionString, true, out PhotoCopierActions behavior)) behavior = PhotoCopierActions.Copy;
             if (!Enum.TryParse(loggingString, true, out LoggingVerbosity logging)) logging = LoggingVerbosity.Verbose;
 
-            ReturnCode result = photoCopier.Initialize(nameof(TakeoutWrangler), false, sourceDir, destinationDir, behavior, pattern, fileFilter, logging, listOnly, parallel);
+            ReturnCode result = photoCopier.Initialize(
+                nameof(TakeoutWranglerUI), 
+                false, 
+                sourceDir, 
+                destinationDir, 
+                backup, 
+                behavior, 
+                pattern, 
+                fileFilter, 
+                logging, 
+                listOnly, 
+                parallel,
+                junk);
+
             if (result != ReturnCode.Success)
             {
                 buttonRun.Enabled = false;
@@ -216,17 +273,46 @@ public partial class MainForm : Form
         return photoCopier;
     }
 
-    private static void StatusHandler(StatusCode statusCode, int value)
+    private static void StatusHandler(StatusCode statusCode, int value, string progressType)
     {
-        if (statusCode == StatusCode.Total)
+        switch (statusCode)
         {
-            totalItems = value;
-            progress = 0;
-            return;
-        }
-        if (!PostMessage(myHandle, viewStatus, IntPtr.Zero, IntPtr.Zero))
-        {
-            throw new Exception("Could not post status message.");
+            case StatusCode.Progress:
+            {
+                string vtext = "status";
+                uint vt = viewStatus;
+                IntPtr lpData = IntPtr.Zero;
+                IntPtr lpLength = IntPtr.Zero;
+
+                if (!string.IsNullOrEmpty(progressType))
+                {
+                    string t = progressType.TrimEnd();
+                    lpData = Marshal.StringToHGlobalAuto(t);
+                    lpLength = new IntPtr(t.Length);
+                    vt = viewType;
+                    vtext = "progress";
+                }
+
+                if (IntPtr.Zero != SendMessage(myHandle, vt, lpData, lpLength))
+                {
+                    throw new Exception($"Could not send message {vtext}.");
+                }
+
+                break;
+            }
+
+            case StatusCode.Total:
+            case StatusCode.More:
+            {
+                totalItems = value;
+                if (statusCode == StatusCode.Total) progress = 0;
+
+                if (IntPtr.Zero != SendMessage(myHandle, viewStatus, IntPtr.Zero, IntPtr.Zero))
+                {
+                    throw new Exception("Could not send status message.");
+                }
+                break;
+            }
         }
     }
 
@@ -234,33 +320,34 @@ public partial class MainForm : Form
     {
         output ??= string.Empty;
 
-        IntPtr lpData = Marshal.StringToHGlobalAuto(output);
-        IntPtr lpLength = new IntPtr(output.Length);
+        string t = output.TrimEnd();
+        IntPtr lpData = Marshal.StringToHGlobalAuto(t);
+        IntPtr lpLength = new IntPtr(t.Length);
         switch (errorCode)
         {
             case MessageCode.Success:
             {
-                if (!PostMessage(myHandle, viewMessage, lpData, lpLength))
+                if (IntPtr.Zero != SendMessage(myHandle, viewMessage, lpData, lpLength))
                 {
-                    throw new Exception("Could not post view message.");
+                    throw new Exception("Could not send view message.");
                 }
                 break;
             }
 
             case MessageCode.Warning:
             {
-                if (!PostMessage(myHandle, viewWarning, lpData, lpLength))
+                if (IntPtr.Zero != SendMessage(myHandle, viewWarning, lpData, lpLength))
                 {
-                    throw new Exception("Could not post view message.");
+                    throw new Exception("Could not send view message.");
                 }
                 break;
             }
 
             case MessageCode.Error:
             {
-                if (!PostMessage(myHandle, viewError, lpData, lpLength))
+                if (IntPtr.Zero != SendMessage(myHandle, viewError, lpData, lpLength))
                 {
-                    throw new Exception("Could not post view message.");
+                    throw new Exception("Could not send view message.");
                 }
                 break;
             }
@@ -289,14 +376,16 @@ public partial class MainForm : Form
         bool runEnabled = buttonRun.Enabled;
         buttonRun.Enabled = false;
 
-        configs.GetString("action", out string actionString);
-        configs.GetString("source", out string source);
-        configs.GetString("destination", out string destination);
-        configs.GetString("pattern", out string pattern);
-        configs.GetString("filter", out string fileFilter);
-        configs.GetString("logging", out string loggingString);
-        configs.GetBool("listonly", out bool listOnly);
-        configs.GetBool("parallel", out bool parallel);
+        configs.TryGetString("action", out string actionString);
+        configs.TryGetString("source", out string source);
+        configs.TryGetString("destination", out string destination);
+        configs.TryGetString("backup", out string backup);
+        configs.TryGetString("pattern", out string pattern);
+        configs.TryGetString("filter", out string fileFilter);
+        configs.TryGetString("logging", out string loggingString);
+        configs.TryGetBool("listonly", out bool listOnly);
+        configs.TryGetBool("parallel", out bool parallel);
+        configs.TryGetString("junk", out string junk);
 
         if (!Enum.TryParse(actionString, true, out PhotoCopierActions behavior)) behavior = PhotoCopierActions.Copy;
         if (!Enum.TryParse(loggingString, true, out LoggingVerbosity logging)) logging = LoggingVerbosity.Verbose;
@@ -306,11 +395,13 @@ public partial class MainForm : Form
             Behavior = behavior,
             Source = source,
             Destination = destination,
+            Backup = backup,
             Pattern = pattern,
             Filter = fileFilter,
             Logging = logging,
             ListOnly = listOnly,
             Parallel = parallel,
+            Junk = junk,
             PhotoCopierSession = copier
         };
 
@@ -326,11 +417,13 @@ public partial class MainForm : Form
             behavior = settingsForm.Behavior;
             source = settingsForm.Source;
             destination = settingsForm.Destination;
+            backup = settingsForm.Backup;
             pattern = settingsForm.Pattern;
             fileFilter = settingsForm.Filter;
             logging = settingsForm.Logging;
             listOnly = settingsForm.ListOnly;
             parallel = settingsForm.Parallel;
+            junk = settingsForm.Junk;
 
             listBoxView.Rows.Clear();
             PhotoCopier photoCopier = new PhotoCopier(OutputHandler, StatusHandler);
@@ -338,18 +431,33 @@ public partial class MainForm : Form
             configs.SetString("action", behavior.ToString());
             configs.SetString("source", source);
             configs.SetString("destination", destination);
+            configs.SetString("backup", backup);
             configs.SetString("pattern", pattern);
             configs.SetString("logging", logging.ToString());
             configs.SetString("filter", fileFilter);
             configs.SetBool("listonly", listOnly);
             configs.SetBool("parallel", parallel);
+            configs.SetString("junk", junk);
 
             if (result == DialogResult.Yes)
             {
                 configs.SaveSettings(settings);
             }
 
-            ReturnCode okay = photoCopier.Initialize(nameof(TakeoutWrangler), false, source, destination, behavior, pattern, fileFilter, logging, listOnly, parallel);
+            ReturnCode okay = photoCopier.Initialize(
+                nameof(TakeoutWranglerUI), 
+                false, 
+                source, 
+                destination, 
+                backup, 
+                behavior, 
+                pattern, 
+                fileFilter, 
+                logging, 
+                listOnly, 
+                parallel,
+                junk);
+
             if (okay == ReturnCode.Success)
             {
                 copier = photoCopier;
@@ -394,7 +502,7 @@ public partial class MainForm : Form
         }
     }
 
-    private async void buttonRun_ClickAsync(object sender, EventArgs e)
+    private void buttonRun_Click(object sender, EventArgs e)
     {
         if (copier == null) return;
         timerView.Start();
@@ -407,10 +515,45 @@ public partial class MainForm : Form
         {
             try
             {
-                ReturnCode code = await copier.RunAsync().ConfigureAwait(false);
-                OutputHandler();
-                OutputHandler($"Results: return code={code}", ErrorCodeFromReturnCode(code));
-                OutputHandler();
+                bool doPhotoCopy = true;
+                configs.TryGetString("backup", out string backup);
+                configs.TryGetString("action", out string behavior);
+                configs.TryGetString("destination", out string destination);
+                configs.TryGetString("source", out string source);
+
+                if (Enum.TryParse(behavior, true, out PhotoCopierActions action) && action == PhotoCopierActions.Reorder)
+                {
+                    if (string.IsNullOrEmpty(backup) && destination.Equals(source, StringComparison.OrdinalIgnoreCase))
+                    {
+                        DialogResult result = MessageBox.Show(
+                            this, 
+                            "The Backup folder name is not specified!",
+                            "Continue? Are you sure?", 
+                            MessageBoxButtons.YesNoCancel, 
+                            MessageBoxIcon.Question);
+
+                        if (result != DialogResult.Yes)
+                        {
+                            doPhotoCopy = false;
+                        }
+                    }
+                    else if (!PhotoCopier.IsRunningAsAdministrator())
+                    {
+                        DialogResult result = MessageBox.Show(
+                            this, 
+                            "Application is not running with admin rights!",
+                            " Continue? Are you sure?", 
+                            MessageBoxButtons.YesNoCancel, 
+                            MessageBoxIcon.Question);
+
+                        if (result != DialogResult.Yes)
+                        {
+                            doPhotoCopy = false;
+                        }
+                    }
+                }
+
+                if (doPhotoCopy) workerRunner.RunWorkerAsync(copier);
             }
             catch (Exception ex)
             {
@@ -459,19 +602,44 @@ public partial class MainForm : Form
     {
         StringBuilder sb = new StringBuilder();
 
-        foreach (DataGridViewRow row in listBoxView.Rows)
+        if (useSelection)
         {
-            if (useSelection && !row.Selected) continue;
-
-            int cellCount = 0;
-            foreach (DataGridViewCell cell in row.Cells)
+            List<int> indexes = new List<int>();
+            foreach (DataGridViewRow item in listBoxView.SelectedRows)
             {
-                if (cellCount > 0) sb.Append(' ');
-                sb.Append(cell.Value?.ToString() ?? string.Empty);
-                cellCount++;
+                indexes.Add(item.Index);
             }
 
-            sb.AppendLine(string.Empty);
+            indexes.Sort();
+            foreach (int index in indexes)
+            {
+                DataGridViewRow row = listBoxView.Rows[index];
+
+                int cellCount = 0;
+                foreach (DataGridViewCell cell in row.Cells)
+                {
+                    if (cellCount > 0) sb.Append(' ');
+                    sb.Append(cell.Value?.ToString() ?? string.Empty);
+                    cellCount++;
+                }
+
+                sb.AppendLine(string.Empty);
+            }
+        }
+        else
+        {
+            foreach (DataGridViewRow row in listBoxView.Rows)
+            {
+                int cellCount = 0;
+                foreach (DataGridViewCell cell in row.Cells)
+                {
+                    if (cellCount > 0) sb.Append(' ');
+                    sb.Append(cell.Value?.ToString() ?? string.Empty);
+                    cellCount++;
+                }
+
+                sb.AppendLine(string.Empty);
+            }
         }
 
         return sb;
@@ -526,7 +694,7 @@ public partial class MainForm : Form
                             MessageBoxButtons.OK,
                             MessageBoxIcon.Error);
                 break;
-            
+
             default:
 #if DEBUG
                 if (Debugger.IsAttached) Debugger.Break();
@@ -552,9 +720,18 @@ public partial class MainForm : Form
             FileStreamOptions fileStreamOptions = new FileStreamOptions { Access = FileAccess.Write, Mode = FileMode.Create };
             using (TextWriter tw = new StreamWriter(filename, fileStreamOptions))
             {
-                foreach (object item in listBoxView.Rows)
+                foreach (DataGridViewRow item in listBoxView.Rows)
                 {
-                    tw.WriteLine(item.ToString());
+                    StringBuilder sb = new StringBuilder();
+
+                    foreach (DataGridViewCell cell in item.Cells)
+                    {
+                        string text = cell.Value as string;
+                        if (text == null) continue;
+                        sb.Append(text);
+                    }
+
+                    tw.WriteLine(sb.ToString());
                 }
             }
         }
@@ -571,41 +748,58 @@ public partial class MainForm : Form
 
     private void listBoxView_KeyDown(object sender, KeyEventArgs e)
     {
-        if (e.KeyCode == Keys.C && e.Control)
+        try
         {
-            StringBuilder sb = new StringBuilder();
-            foreach (DataGridViewRow item in listBoxView.SelectedRows)
+            if (e.KeyCode == Keys.C && e.Control)
             {
-                if (item == null)
-                    sb.AppendLine();
-                else
+                List<int> indexes = new List<int>();
+
+                StringBuilder sb = new StringBuilder();
+                foreach (DataGridViewRow item in listBoxView.SelectedRows)
                 {
-                    int count = 0;
-                    foreach (DataGridViewCell cell in item.Cells)
+                    indexes.Add(item.Index);
+                }
+
+                indexes.Sort();
+
+                foreach (int index in indexes)
+                {
+                    DataGridViewRow row = listBoxView.Rows[index];
+
+                    int cellCount = 0;
+                    foreach (DataGridViewCell cell in row.Cells)
                     {
-                        if (count > 0) sb.Append(", ");
-                        sb.Append((cell.Value as string) ?? "");
-                        count++;
+                        if (cellCount > 0) sb.Append(' ');
+                        sb.Append(cell.Value?.ToString() ?? string.Empty);
+                        cellCount++;
                     }
                     sb.AppendLine();
                 }
-            }
 
-            if (sb.Length > 0)
+                if (sb.Length > 0)
+                {
+                    Clipboard.SetText(sb.ToString(), TextDataFormat.UnicodeText);
+                }
+
+                e.Handled = true;
+            }
+            else if (e.KeyCode == Keys.A && e.Control)
             {
-                Clipboard.SetText(sb.ToString());
+                foreach (int index in Enumerable.Range(0, listBoxView.Rows.Count))
+                {
+                    listBoxView.Rows[index].Selected = true;
+                    foreach (DataGridViewCell cell in listBoxView.Rows[index].Cells)
+                    {
+                        cell.Selected = true;
+                    }
+                }
+
+                e.Handled = true;
             }
         }
-        else if (e.KeyCode == Keys.A && e.Control)
+        catch (Exception ex)
         {
-            foreach (int index in Enumerable.Range(0, listBoxView.Rows.Count))
-            {
-                listBoxView.Rows[index].Selected = true;
-                foreach (DataGridViewCell cell in listBoxView.Rows[index].Cells)
-                {
-                    cell.Selected = true;
-                }
-            }
+            MessageBox.Show(ex.Message);
         }
     }
 

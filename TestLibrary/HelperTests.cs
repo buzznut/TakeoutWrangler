@@ -36,18 +36,18 @@ public class HelperTests
             var foo = ae;
         }
 
-        Assert.AreEqual(ConfigResult.UsedDefault, configs.GetString("foundString", out string foundString));
+        Assert.IsTrue(configs.TryGetString("foundString", out string foundString));
         Assert.AreEqual("foundString", foundString);
 
-        Assert.AreEqual(ConfigResult.UsedDefault, configs.GetBool("foundBool", out bool foundBool));
+        Assert.IsTrue(configs.TryGetBool("foundBool", out bool foundBool));
         Assert.AreEqual(true, foundBool);
 
-        Assert.AreEqual(ConfigResult.UsedDefault, configs.GetInt("foundInt", out int foundInt));
+        Assert.IsTrue(configs.TryGetInt("foundInt", out int foundInt));
         Assert.AreEqual(3976, foundInt);
 
         try
         {
-            configs.GetString("notfound", out string notFoundText);
+            configs.TryGetString("notfound", out string notFoundText);
         }
         catch (KeyNotFoundException knfe)
         {
@@ -110,17 +110,17 @@ public class HelperTests
         File.WriteAllText(appSettings, sb.ToString());
         configs.LoadAppSettings();
 
-        Assert.AreEqual(ConfigResult.Found, configs.GetString("source", out string sourceDir));
-        Assert.AreEqual(ConfigResult.Found, configs.GetString("destination", out string destinationDir));
-        Assert.AreEqual(ConfigResult.Found, configs.GetString("action", out string actionText));
+        Assert.IsTrue(configs.TryGetString("source", out string sourceDir));
+        Assert.IsTrue(configs.TryGetString("destination", out string destinationDir));
+        Assert.IsTrue(configs.TryGetString("action", out string actionText));
         Assert.AreEqual("list", actionText);
-        Assert.AreEqual(ConfigResult.Found, configs.GetString("pattern", out string pattern));
+        Assert.IsTrue(configs.TryGetString("pattern", out string pattern));
         Assert.AreEqual("$y_$m", pattern);
-        Assert.AreEqual(ConfigResult.Found, configs.GetString("filter", out string filter));
+        Assert.IsTrue(configs.TryGetString("filter", out string filter));
         Assert.AreEqual("takeout-*.zip", filter);
-        Assert.AreEqual(ConfigResult.Found, configs.GetBool("help", out bool help));
+        Assert.IsTrue(configs.TryGetBool("help", out bool help));
         Assert.AreEqual(help, false);
-        Assert.AreEqual(ConfigResult.InvalidKey, configs.GetString("doesNotExist", out string test));
+        Assert.IsTrue(configs.TryGetString("doesNotExist", out string test));
     }
 
     [TestMethod]
@@ -138,11 +138,11 @@ public class HelperTests
 
         configs.ParseArgs(["-filter=takeout-*.zip"]);
 
-        Assert.AreEqual(ConfigResult.Found, configs.GetString("filter", out string filter));
+        Assert.IsTrue(configs.TryGetString("filter", out string filter));
         Assert.AreEqual("takeout-*.zip", filter);
-        Assert.AreEqual(ConfigResult.UsedDefault, configs.GetBool("help", out bool help));
+        Assert.IsTrue(configs.TryGetBool("help", out bool help));
         Assert.AreEqual(help, false);
-        Assert.AreEqual(ConfigResult.InvalidKey, configs.GetString("doesNotExist", out string test));
+        Assert.IsFalse(configs.TryGetString("doesNotExist", out string test));
 
         // no leading '-' or '/'
         try
@@ -196,7 +196,7 @@ public class HelperTests
         configs.LoadAppSettings();
         configs.ParseArgs(["-filter=takeout-*.7z"]);
 
-        Assert.AreEqual(ConfigResult.Found, configs.GetString("filter", out string filter));
+        Assert.IsTrue(configs.TryGetString("filter", out string filter));
         Assert.AreEqual("takeout-*.7z", filter);
     }
 
@@ -241,7 +241,7 @@ public class HelperTests
         configs.ParseArgs(["-filter=takeout-*.7z"]);
         configs.LoadAppSettings();
 
-        Assert.AreEqual(ConfigResult.Found, configs.GetString("filter", out string filter));
+        Assert.IsTrue(configs.TryGetString("filter", out string filter));
         Assert.AreEqual("takeout-*.zip", filter);
     }
 }

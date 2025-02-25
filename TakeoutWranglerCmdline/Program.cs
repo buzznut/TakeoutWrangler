@@ -20,23 +20,25 @@ internal static class Program
         configs.LoadAppSettings();
         configs.ParseArgs(args);
 
-        configs.GetBool("help", out bool showHelp);
-        configs.GetString("source", out string sourceDir);
-        configs.GetString("destination", out string destinationDir);
-        configs.GetString("pattern", out string pattern);
-        configs.GetString("filter", out string fileFilter);
-        configs.GetString("logging", out string loggingString);
-        configs.GetString("action", out string actionString);
-        configs.GetBool("listonly", out bool listOnly);
-        configs.GetBool("parallel", out bool parallel);
+        configs.TryGetBool("help", out bool showHelp);
+        configs.TryGetString("source", out string sourceDir);
+        configs.TryGetString("destination", out string destinationDir);
+        configs.TryGetString("backup", out string backup);
+        configs.TryGetString("pattern", out string pattern);
+        configs.TryGetString("filter", out string fileFilter);
+        configs.TryGetString("logging", out string loggingString);
+        configs.TryGetString("action", out string actionString);
+        configs.TryGetBool("listonly", out bool listOnly);
+        configs.TryGetBool("parallel", out bool parallel);
+        configs.TryGetString("junk", out string junk);
 
         if (!Enum.TryParse(actionString, true, out PhotoCopierActions behavior)) behavior = PhotoCopierActions.Copy;
         if (!Enum.TryParse(loggingString, true, out LoggingVerbosity logging)) logging = LoggingVerbosity.Verbose;
 
-        ReturnCode result = photoCopier.Initialize(nameof(TakeoutWranglerCmdline), showHelp, sourceDir, destinationDir, behavior, pattern, fileFilter, logging, listOnly, parallel);
+        ReturnCode result = photoCopier.Initialize(nameof(TakeoutWranglerCmdline), showHelp, sourceDir, destinationDir, backup, behavior, pattern, fileFilter, logging, listOnly, parallel, junk);
         if (result != ReturnCode.Success) return (int)result;
 
-        return (int)photoCopier.RunAsync().GetAwaiter().GetResult();
+        return (int)photoCopier.Run();
     }
 
     private static void OutputHandler(string output = null, MessageCode errorCode = MessageCode.Success)
@@ -52,7 +54,7 @@ internal static class Program
             Console.WriteLine();
     }
 
-    private static void StatusHandler(StatusCode statusCode, int value)
+    private static void StatusHandler(StatusCode statusCode, int value, string progressType)
     {
     }
 }
