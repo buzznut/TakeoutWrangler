@@ -1,6 +1,6 @@
-//  <@$&< copyright begin >&$@> D50225522CB19A3A2E3CA10257DC538D19677A6406D028F0BBE01DE33387A4EA:20241017.A:2024:12:23:9:15
+//  <@$&< copyright begin >&$@> 24FE144C2255E2F7CCB65514965434A807AE8998C9C4D01902A628F980431C98:20241017.A:2025:2:25:8:47
 // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-// Copyright © 2024 Stewart A. Nutter - All Rights Reserved.
+// Copyright © 2024-2025 Stewart A. Nutter - All Rights Reserved.
 // No warranty is implied or given.
 // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 // <@$&< copyright end >&$@>
@@ -2111,7 +2111,7 @@ public class PhotoCopier
 
         try
         {
-            if (string.IsNullOrEmpty(path.Trim()))
+            if (string.IsNullOrEmpty(path?.Trim()))
             {
                 reason = "Backup folder path cannot be null or empty";
                 return false;
@@ -2130,7 +2130,7 @@ public class PhotoCopier
             {
                 sb.Append(Convert.ToChar('A' + rnd.Next() % 26));
             }
-            string testFile = Path.Combine(folderPath, $"{sb}.tmp");
+            string testFile = Path.Combine(path, $"{sb}.tmp");
             using (FileStream stream = new FileStream(testFile, FileMode.Create, FileAccess.ReadWrite, FileShare.None, 4096, FileOptions.DeleteOnClose))
             {
                 byte test = 200;
