@@ -12,6 +12,7 @@ namespace TakeoutWranglerUI;
 
 public partial class SettingsForm : Form
 {
+    private bool isLoaded;
     public string Source;
     public string Destination;
     public string Backup;
@@ -70,6 +71,8 @@ public partial class SettingsForm : Form
         checkBoxUseParallel.Checked = Parallel;
 
         SetActionDescription();
+        isLoaded = true;
+        SettingsChanged(Behavior == PhotoCopierActions.Reorder);
 
         ResumeLayout(true);
     }
@@ -146,7 +149,7 @@ public partial class SettingsForm : Form
             }
 
             bool inPlace = Source.Equals(Destination, StringComparison.OrdinalIgnoreCase);
-            if (inPlace && !copier.ValidateReorderBackupFolder(textBoxReorderBackupFolder.Text, null, out reason))
+            if (inPlace && !copier.ValidateReorderBackupDirectory(textBoxReorderBackupFolder.Text, null, out reason))
             {
                 MessageBox.Show(reason, "Validate Reorder backup folder", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 DialogResult = DialogResult.None;
@@ -227,6 +230,8 @@ public partial class SettingsForm : Form
 
     private void SettingsChanged(bool isReorder)
     {
+        if (!isLoaded) return;
+
         bool inPlace = false;
         if (isReorder)
         {
@@ -237,10 +242,6 @@ public partial class SettingsForm : Form
         {
             labelSourceDescription.Text = TWContstants.SourceDescriptionCopy;
         }
-
-        labelJunkFiles.Enabled = isReorder;
-        textBoxJunkFiles.Enabled = isReorder;
-        labelJunkComma.Enabled = isReorder;
 
         labelFilter.Enabled = !isReorder;
         textBoxFileFilter.Enabled = !isReorder;
@@ -260,12 +261,6 @@ public partial class SettingsForm : Form
         {
             textBoxReorderBackupFolder.Text = folder;
         }
-    }
-
-    private void checkBoxReorderInPlace_CheckedChanged(object sender, EventArgs e)
-    {
-        PhotoCopierActions newBehavior = (comboBoxActions.SelectedItem as PhotoCopierActions?).GetValueOrDefault(PhotoCopierActions.Copy);
-        SettingsChanged(newBehavior == PhotoCopierActions.Reorder);
     }
 
     private void textBox_TextChanged(object sender, EventArgs e)

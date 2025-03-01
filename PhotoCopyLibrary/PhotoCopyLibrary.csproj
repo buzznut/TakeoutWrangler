@@ -33,10 +33,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\ExifDataLibrary\ExifDataLibrary.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
     <None Update="default.appsettings.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>

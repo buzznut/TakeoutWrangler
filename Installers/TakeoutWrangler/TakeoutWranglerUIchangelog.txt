@@ -1,3 +1,9 @@
+1.0.152.1199 - 2025/03/01 01:59:47
+    1) Performance and bug fixes.
+
+1.0.148.1376 - 2025/02/25 04:57:48
+    1) Updated copyright. Built new release and installers.
+
 1.0.148.890 - 2025/02/25 08:50:19
     1) UI fixes and improvements. Removed 'Overwrite' as an action. Added backup for in-place 'Reorder' action. Running all file work in the background. Fixed and improved the 'Reorder' action. Other refactoring to improve performance and functionality.
     2) Set Parallel=true by default.

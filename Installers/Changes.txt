@@ -38,3 +38,5 @@
 -git(28aafec5c064b0c3d9fd2e9c755dd65da6488328)=Testing autoupdate
 -git(2cb63e27a1493861682725200bb68777fd35cbad)=UI fixes and improvements. Removed 'Overwrite' as an action. Added backup for in-place 'Reorder' action. Running all file work in the background. Fixed and improved the 'Reorder' action. Other refactoring to improve performance and functionality.
 -git(c8128afdd3f3f56cf1191298ad93b9db82b8c440)=Set Parallel=true by default.
+-git(64b1355c669d71cafa7a802b6a916ddcd078753d)=Updated copyright. Built new release and installers.
+-all=Performance and bug fixes.
