@@ -1,4 +1,4 @@
-//  <@$&< copyright begin >&$@> 24FE144C2255E2F7CCB65514965434A807AE8998C9C4D01902A628F980431C98:20241017.A:2025:2:25:8:47
+//  <@$&< copyright begin >&$@> 24FE144C2255E2F7CCB65514965434A807AE8998C9C4D01902A628F980431C98:20241017.A:2025:7:1:14:38
 // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 // Copyright © 2024-2025 Stewart A. Nutter - All Rights Reserved.
 // No warranty is implied or given.
@@ -9,11 +9,13 @@
 // for reading and writing EXIF data in JPEG, TIFF and PNG image files.
 // © Copyright 2021 Hans-Peter Kalb
 
+using CommonLibrary;
 using MetadataExtractor;
 using MetadataExtractor.Formats.Avi;
 using MetadataExtractor.Formats.Exif;
 using MetadataExtractor.Formats.FileType;
 using MetadataExtractor.Formats.QuickTime;
+using MimeKit;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System.Collections.Concurrent;
@@ -40,28 +42,22 @@ public delegate void StatusUpdate(StatusCode status = StatusCode.Progress, int v
 
 public class PhotoCopier
 {
-    private CancellationTokenSource _cancel;
-    private const string _retryText = "(Retry) ";
-    private  int _canceled;
-    private string _source;
-    private string _destination;
-    private string _backup;
-    private string _pattern = "$y_$m";
-    private string _fileFilter = "takeout-*.zip";
-    private PhotoCopierActions _behavior = PhotoCopierActions.Copy;
-    private LoggingVerbosity _logging = LoggingVerbosity.Verbose;
-    private bool _listOnly = true;
-    private bool _parallel = true;
-    private string _junk;
-    private static bool _isAdmin;
-    private static readonly DateTime _notBeforeDate = new DateTime(1976, 1, 1);
+    private CancellationTokenSource cancel;
+    private const string retryText = "(Retry) ";
+    private  int canceled;
+    private Settings settings;
+    private string password = null;
+    private static bool isAdmin;
+    private static readonly DateTime notBeforeDate = new DateTime(1976, 1, 1);
     private HashSet<string> junkExtensions;
-    private bool IsCanceled { get { return Interlocked.Add(ref _canceled, 0) > 0; } }
-    private readonly char[] _separator = new char[] { '.' };
-    private readonly HandleOutput _outputHandler = DummyOutput;
-    private readonly StatusUpdate _statusUpdate = DummyStatus;
-    private readonly ConcurrentBag<ZipArchive> _archives = new ConcurrentBag<ZipArchive>();
-    private readonly ConcurrentDictionary<string, DateTime> _originalFileNameToDate = new ConcurrentDictionary<string, DateTime>(StringComparer.OrdinalIgnoreCase);
+    private bool IsCanceled { get { return Interlocked.Add(ref canceled, 0) > 0; } }
+    private readonly char[] fileNameSeparator = new char[] { '.' };
+    private readonly char[] zipDirSeparator = new char[] { '\\' };
+    private readonly HandleOutput outputHandler = DummyOutput;
+    private readonly StatusUpdate statusUpdate = DummyStatus;
+    private readonly ConcurrentBag<ZipArchive> archives = new ConcurrentBag<ZipArchive>();
+    private readonly ConcurrentDictionary<string, DateTime> originalFileNameToDate = new ConcurrentDictionary<string, DateTime>(StringComparer.OrdinalIgnoreCase);
+    private int archivedMailCount = 0;
 
     readonly List<ConfigParam> _paramTypes = new List<ConfigParam>
     {
@@ -75,7 +71,13 @@ public class PhotoCopier
         new ConfigParam { Name = "pattern", Default = "$y_$m", PType = ParamType.String },
         new ConfigParam { Name = "listonly", Synonyms = ["list"], Default = true, PType = ParamType.Bool },
         new ConfigParam { Name = "parallel", Synonyms = ["fast"], Default = false, PType = ParamType.Bool },
-        new ConfigParam { Name = "junk", Default = null, PType = ParamType.String }
+        new ConfigParam { Name = "junk", Default = null, PType = ParamType.String },
+        new ConfigParam { Name = "keeplocked", Default = false, PType = ParamType.Bool },
+        new ConfigParam { Name = "password", Default = string.Empty, PType = ParamType.String },
+        new ConfigParam { Name = "keeptrash", Default = false, PType = ParamType.Bool },
+        new ConfigParam { Name = "keepspam", Default = false, PType = ParamType.Bool },
+        new ConfigParam { Name = "keepsent", Default = false, PType = ParamType.Bool },
+        new ConfigParam { Name = "keeparchived", Default = false, PType = ParamType.Bool }
     };
 
     private static void DummyOutput(string output, MessageCode messageCode = MessageCode.Success)
@@ -90,151 +92,150 @@ public class PhotoCopier
 
     public PhotoCopier(HandleOutput output, StatusUpdate status)
     {
-        _isAdmin = IsRunningAsAdministrator();
-        _outputHandler = output;
-        _statusUpdate = status;
+        isAdmin = IsRunningAsAdministrator();
+        outputHandler = output;
+        statusUpdate = status;
     }
 
     public ReturnCode Initialize(
         string appName,
         bool help,
-        string sourceDir,
-        string destDir,
-        string backup,
-        PhotoCopierActions behavior,
-        string pattern,
-        string fileFilter,
-        LoggingVerbosity logging,
-        bool listOnly,
-        bool parallel,
-        string junk)
+        Settings settings,
+        string password)
     {
         try
         {
+            this.settings = settings;
             string[] allActions = Enum.GetNames<PhotoCopierActions>();
 
             List<string> reasons = new List<string>();
 
             // trim trailing backslashes
-            if ((sourceDir?.EndsWith('\\')).GetValueOrDefault()) sourceDir = sourceDir?.Substring(0, sourceDir.Length - 1);
-            if ((destDir?.EndsWith('\\')).GetValueOrDefault()) destDir = destDir?.Substring(0, destDir.Length - 1);
+            if ((settings.Source?.EndsWith('\\')).GetValueOrDefault()) this.settings.Source = settings.Source?.Substring(0, settings.Source.Length - 1);
+            if ((settings.Destination?.EndsWith('\\')).GetValueOrDefault()) this.settings.Destination = settings.Destination?.Substring(0, settings.Destination.Length - 1);
 
             // validate paths
-            help |= !Configs.ValidatePath(sourceDir, "Source", reasons);
-            help |= !Configs.ValidatePath(destDir, "Destination", reasons);
+            help |= !Configs.ValidatePath(this.settings.Source, "Source", reasons);
+            help |= !Configs.ValidatePath(this.settings.Destination, "Destination", reasons);
+            help |= !ValidateLocked(this.settings.KeepLocked, password, reasons);
 
             if (help)
             {
-                _outputHandler($"usage: {appName} -source=\"path\" -destination=\"path\" -action={string.Join('|', allActions)} -pattern=$y_$m -filter=takeout-*.zip");
-                _outputHandler();
-                _outputHandler($"  Copy all photos, movies, etc. from a set of archive zip files (Google takeout) from the source folder");
-                _outputHandler($"  to destination folder. Subfolders will be created to hold photos with pattern naming. Should run in admin mode");
-                _outputHandler($"  for file and folder access.");
-                _outputHandler();
-                _outputHandler($"where:");
-                _outputHandler();
-                _outputHandler($" source=path        folder that contains the takeout zip file(s).");
-                _outputHandler($"                    (default=null");
-                _outputHandler();
-                _outputHandler($" destination=path   folder where to put photo contents (files and subfolders)");
-                _outputHandler($"                    (default=null");
-                _outputHandler();
-                _outputHandler($" backup=path        folder where to put backup of original contents before reorder action (files and subfolders)");
-                _outputHandler($"                    (default=empty/null - no backup before reorder");
-                _outputHandler();
-                _outputHandler($" action=option      option is one of {PhotoCopierActions.Copy} or {PhotoCopierActions.Reorder}.");
-                _outputHandler($"                    (default={PhotoCopierActions.Copy}");
-                _outputHandler();
-                _outputHandler($"                    {PhotoCopierActions.Copy} media files to destination.");
-                _outputHandler($"                    {PhotoCopierActions.Reorder} media files only if pattern is different (create backup zip files).");
-                _outputHandler();
-                _outputHandler($" list=value         value is true to list only, false to perform actions.");
-                _outputHandler($"                    example: value=true would only show potential errors or actions without changing destination.");
-                _outputHandler();
-                _outputHandler($" parallel=value     value is true to run in parallel for faster performance, false to run sequentially. Parallem mode uses more memory.");
-                _outputHandler($"                    example: value=true Uses more memory and runs faster. (default=true)");
-                _outputHandler();
-                _outputHandler($" junk=text          Junk files with these comma separated extensions to remove. (default=empty)");
-                _outputHandler();
-                _outputHandler($" loggin=verbosity   {LoggingVerbosity.Quiet}, {LoggingVerbosity.Change}, or {LoggingVerbosity.Verbose}. {LoggingVerbosity.Quiet}=minimal output, {LoggingVerbosity.Change}=minimal+changed content, {LoggingVerbosity.Verbose}=all");
-                _outputHandler($"                    (default={LoggingVerbosity.Change})");
-                _outputHandler();
-                _outputHandler($" pattern=text       Target folder name pattern. (default=$y_$m");
-                _outputHandler($"                       example:");
-                _outputHandler($"                         if date-time, is March 27, 2024 at 3:33PM");
-                _outputHandler($"                         $y = 4 digit year.  ex: 2024");
-                _outputHandler($"                         $m = 2 digit month. ex: 03");
-                _outputHandler($"                         $M = month name.    ex: March");
-                _outputHandler($"                         $d = 2 digit day.   ex: 27");
-                _outputHandler($"                         $h = 2 digit hour.  ex: 15 (24 hours per day)");
-                _outputHandler($"                         '$y-$M($d)' \"root\\2024-March(3)\"");
-                _outputHandler();
-                _outputHandler($" filter=text        photo archive file filter. (default='takeout-*.zip')");
-                _outputHandler();
+                outputHandler($"usage: {appName} -source=\"path\" -destination=\"path\" -action={string.Join('|', allActions)} -pattern=$y_$m -filter=takeout-*.zip");
+                outputHandler();
+                outputHandler($"  Copy all photos, movies, etc. senders a set of archive zip files (Google takeout) senders the source folder");
+                outputHandler($"  to destination folder. Subfolders will be created to hold photos with settings.Pattern naming. Should run in admin mode");
+                outputHandler($"  for file and folder access.");
+                outputHandler();
+                outputHandler($"where:");
+                outputHandler();
+                outputHandler($" source=path        folder that contains the takeout zip file(s).");
+                outputHandler($"                    (default=null");
+                outputHandler();
+                outputHandler($" destination=path   folder where to put photo contents (files and subfolders)");
+                outputHandler($"                    (default=null");
+                outputHandler();
+                outputHandler($" backup=path        folder where to put backup of original contents before reorder action (files and subfolders)");
+                outputHandler($"                    (default=empty/null - no backup before reorder");
+                outputHandler();
+                outputHandler($" action=option      option is one of {PhotoCopierActions.Copy} or {PhotoCopierActions.Reorder}.");
+                outputHandler($"                    (default={PhotoCopierActions.Copy}");
+                outputHandler();
+                outputHandler($"                    {PhotoCopierActions.Copy} media files to destination.");
+                outputHandler($"                    {PhotoCopierActions.Reorder} media files only if settings.Pattern is different (create backup zip files).");
+                outputHandler();
+                outputHandler($" list=value         value is true to list only, false to perform actions.");
+                outputHandler($"                    example: list=true would only show potential errors or actions without changing destination.");
+                outputHandler();
+                outputHandler($" parallel=value     value is true to run in parallel for faster performance, false to run sequentially. Parallem mode uses more memory.");
+                outputHandler($"                    example: parallel=true Uses more memory and runs faster. (default=true)");
+                outputHandler();
+                outputHandler($" keeplocked=value   value is true to keep locked file content.");
+                outputHandler($"                    example: keepLocked=true will keep locked file content. Requires password. (default=false)");
+                outputHandler();
+                outputHandler($" password=text      required password to encrypt locked files if keeplocked is true (not saved to config file).");
+                outputHandler();
+                outputHandler($" junk=text          junk files with these comma separated extensions to remove. (default=empty)");
+                outputHandler();
+                outputHandler($" loggin=verbosity   {LoggingVerbosity.Quiet}, {LoggingVerbosity.Change}, or {LoggingVerbosity.Verbose}. {LoggingVerbosity.Quiet}=minimal output, {LoggingVerbosity.Change}=minimal+changed content, {LoggingVerbosity.Verbose}=all");
+                outputHandler($"                    (default={LoggingVerbosity.Change})");
+                outputHandler();
+                outputHandler($" settings.Pattern=text       Target folder name settings.Pattern. (default=$y_$m");
+                outputHandler($"                       example:");
+                outputHandler($"                         if date-time, is March 27, 2024 at 3:33PM");
+                outputHandler($"                         $y = 4 digit year.  ex: 2024");
+                outputHandler($"                         $m = 2 digit month. ex: 03");
+                outputHandler($"                         $M = month name.    ex: March");
+                outputHandler($"                         $d = 2 digit day.   ex: 27");
+                outputHandler($"                         $h = 2 digit hour.  ex: 15 (24 hours per day)");
+                outputHandler($"                         '$y-$M($d)' \"root\\2024-March(3)\"");
+                outputHandler();
+                outputHandler($" filter=text        photo archive file filter. (default='takeout-*.zip')");
+                outputHandler();
+                outputHandler($" keepTrash=value    value is true to keep mail trash folder content.");
+                outputHandler($"                    example: keepTrash=true will keep mail trash folder content.");
+                outputHandler();
+                outputHandler($" settings.KeepSpam) value is true to keep mail spam folder content.");
+                outputHandler($"                    example: settings.KeepSpam)=true will keep mail spam folder content.");
+                outputHandler();
+                outputHandler($" keepSent=value     value is true to keep mail sent folder content.");
+                outputHandler($"                    example: keepent=true will keep mail sent folder content.");
+                outputHandler();
+                outputHandler($" keepArchived=value value is true to keep mail archive folder content.");
+                outputHandler($"                    example: keepent=true will keep mail archive folder content.");
+                outputHandler();
 
                 if (reasons.Count > 0)
                 {
-                    _outputHandler("Issues: ", MessageCode.Warning);
+                    outputHandler("Issues: ", MessageCode.Warning);
 
                     int index = 1;
                     foreach (string reason in reasons)
                     {
-                        _outputHandler($"  {index++}. {reason}", MessageCode.Warning);
+                        outputHandler($"  {index++}. {reason}", MessageCode.Warning);
                     }
 
-                    _outputHandler();
+                    outputHandler();
                 }
 
                 return ReturnCode.HadIssues;
             }
 
-            if (behavior == PhotoCopierActions.Copy && !System.IO.Directory.GetFiles(sourceDir ?? ".\\", fileFilter).Any())
+            if (settings.Behavior == PhotoCopierActions.Copy && !System.IO.Directory.GetFiles(settings.Source ?? ".\\", settings.Filter).Any())
             {
-                _outputHandler($"No source files found. sourceDir:\"{sourceDir}\", file filter:\"{fileFilter}\"");
+                outputHandler($"No source files found. sourceDir:\"{settings.Source}\", file filter:\"{settings.Filter}\"");
                 return ReturnCode.DirectoryError;
             }
 
+            this.password = password;
+
             // keep the parameters
 
-            _outputHandler("Current configuration:");
+            outputHandler("Current configuration:");
+            outputHandler($" Running as Admin: {isAdmin}", isAdmin ? MessageCode.Success : MessageCode.Warning);
+            outputHandler($" Action: {this.settings.Behavior}");
+            outputHandler($" Source: {this.settings.Source}");
+            outputHandler($" Destination: {this.settings.Destination}");
+            outputHandler($" Filter: {this.settings.Filter}");
+            outputHandler($" Pattern: {this.settings.Pattern}");
+            outputHandler($" Junk extensions: {this.settings.JunkExtensions ?? string.Empty}");
+            outputHandler($" Logging: {this.settings.Logging}");
+            outputHandler($" ListOnly: {this.settings.ListOnly}");
+            outputHandler($" Parallel: {this.settings.Parallel}");
+            outputHandler($" KeepLocked: {this.settings.KeepLocked}");
+            outputHandler($" Password: {(string.IsNullOrEmpty(password) ? "Not set" : "Set (hidden)")}");
+            outputHandler($" KeepTrash: {this.settings.KeepTrash}");
+            outputHandler($" KeepSpam: {this.settings.KeepSpam}");
+            outputHandler($" KeepSent: {this.settings.KeepSent}");
+            outputHandler($" KeepArchived: {this.settings.KeepArchived}");
+            outputHandler();
 
-            _outputHandler($" Running as Admin: {_isAdmin}", _isAdmin ? MessageCode.Success : MessageCode.Warning);
-
-            _behavior = behavior;
-            _outputHandler($" Action: {behavior}");
-
-            _source = sourceDir;
-            _outputHandler($" Source: {sourceDir}");
-
-            _destination = destDir;
-            _outputHandler($" Destination: {destDir}");
-
-            _fileFilter = fileFilter;
-            _outputHandler($" Filter: {fileFilter}");
-
-            _pattern = pattern;
-            _outputHandler($" Pattern: {pattern}");
-
-            _logging = logging;
-            _outputHandler($" Logging: {logging}");
-
-            _listOnly = listOnly;
-            _outputHandler($" ListOnly: {listOnly}");
-
-            _parallel = parallel;
-            _outputHandler($" Parallel: {parallel}");
-
-            if (behavior == PhotoCopierActions.Reorder)
+            if (this.settings.Behavior == PhotoCopierActions.Reorder)
             {
-                bool inPlace = _source != null && _source.Equals(_destination, StringComparison.OrdinalIgnoreCase);
-                _backup = string.IsNullOrEmpty(backup) ? "null" : backup;
-                _outputHandler($" Backup: {backup ?? "(not set)"}", behavior == PhotoCopierActions.Reorder && inPlace && string.IsNullOrEmpty(backup) ? MessageCode.Warning : MessageCode.Success);
+                bool inPlace = this.settings.Source != null && this.settings.Source.Equals(this.settings.Destination, StringComparison.OrdinalIgnoreCase);
+                this.settings.Backup = string.IsNullOrEmpty(this.settings.Backup) ? "null" : this.settings.Backup;
+                outputHandler($" Backup: {this.settings.Backup ?? "(not set)"}", this.settings.Behavior == PhotoCopierActions.Reorder && inPlace && string.IsNullOrEmpty(this.settings.Backup) ? MessageCode.Warning : MessageCode.Success);
             }
-
-            _junk = junk;
-            _outputHandler($" Junk extensions: {junk ?? string.Empty}");
-
-            _outputHandler();
 
             return (int)ReturnCode.Success;
         }
@@ -245,18 +246,29 @@ public class PhotoCopier
         }
     }
 
+    private bool ValidateLocked(bool keepLocked, string password, List<string> reasons)
+    {
+        if (keepLocked && string.IsNullOrEmpty(password))
+        {
+            reasons.Add("If keepLocked is true, then a password must be provided.");
+            return false;
+        }
+
+        return true;
+    }
+
     public bool IsRunning { get; private set; }
 
     public void Stop()
     {
         if (!IsCanceled)
         {
-            _outputHandler();
-            _outputHandler("Operation canceled", MessageCode.Warning);
-            _outputHandler();
+            outputHandler();
+            outputHandler("Operation canceled", MessageCode.Warning);
+            outputHandler();
 
-            Interlocked.Increment(ref _canceled);
-            _cancel?.Cancel();
+            Interlocked.Increment(ref canceled);
+            cancel?.Cancel();
         }
     }
 
@@ -271,24 +283,24 @@ public class PhotoCopier
         {
             stopwatch.Start();
 
-            junkExtensions = GetJunkExtensions(_junk).ToHashSet(StringComparer.OrdinalIgnoreCase);
-            _canceled = 0;
+            junkExtensions = GetJunkExtensions(settings.JunkExtensions).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            canceled = 0;
 
             IsRunning = true;
             returnCode = ReturnCode.Success;
 
-            if (_behavior == PhotoCopierActions.Copy)
+            if (settings.Behavior == PhotoCopierActions.Copy)
             {
                 returnCode = ProcessTakeoutZips(results);
             }
-            else if (_behavior == PhotoCopierActions.Reorder)
+            else if (settings.Behavior == PhotoCopierActions.Reorder)
             {
                 returnCode = ProcessReorder(results);
             }
             else
             {
                 results.Increment(ResultCounts.CountKeys.Error);
-                _outputHandler("Invalid behavior", MessageCode.Error);
+                outputHandler("Invalid behavior", MessageCode.Error);
                 returnCode = ReturnCode.Error;
             }
         }
@@ -300,22 +312,22 @@ public class PhotoCopier
         }
         finally
         {
-            foreach (ZipArchive archive in _archives)
+            foreach (ZipArchive archive in archives)
             {
                 archive.Dispose();
             }
 
-            _archives.Clear();
+            archives.Clear();
             IsRunning = false;
 
             stopwatch.Stop();
 
-            _outputHandler();
-            _outputHandler($"Elapsed={stopwatch.Elapsed}, Filter=\"{_fileFilter}\"");
+            outputHandler();
+            outputHandler($"Elapsed={stopwatch.Elapsed}, Filter=\"{settings.Filter}\"");
 
-            _outputHandler();
+            outputHandler();
             EmitResults(results);
-            _outputHandler();
+            outputHandler();
         }
 
         return IsCanceled ? ReturnCode.Canceled : returnCode;
@@ -340,7 +352,7 @@ public class PhotoCopier
         if (changes.HasValue) parts.Add($"Changes={changes.Value}");
 
         string text = $"{"".PadLeft(pad)}{results.Text ?? "unknown"}: {string.Join(", ", parts)}";
-        _outputHandler(text);
+        outputHandler(text);
 
         foreach (ResultCounts child in results.Children)
         {
@@ -355,30 +367,30 @@ public class PhotoCopier
         try
         {
             ConcurrentBag<string> filesToDelete = null;
-            bool inPlace = _source.Equals(_destination, StringComparison.OrdinalIgnoreCase);
+            bool inPlace = settings.Source.Equals(settings.Destination, StringComparison.OrdinalIgnoreCase);
 
             if (inPlace)
             {
                 filesToDelete = new ConcurrentBag<string>();
             }
 
-            HashSet<string> allPaths = System.IO.Directory.EnumerateFiles(_source, "*.*", SearchOption.AllDirectories).ToHashSet(StringComparer.OrdinalIgnoreCase);
-            if (!string.IsNullOrEmpty(_backup) && inPlace)
+            HashSet<string> allPaths = System.IO.Directory.EnumerateFiles(settings.Source, "*.*", SearchOption.AllDirectories).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            if (!string.IsNullOrEmpty(settings.Backup) && inPlace)
             {
-                if (!System.IO.Directory.Exists(_backup))
+                if (!System.IO.Directory.Exists(settings.Backup))
                 {
                     results.Increment(ResultCounts.CountKeys.Error);
-                    _outputHandler($"Backup root directory does not exist: {_backup}", MessageCode.Error);
+                    outputHandler($"Backup root directory does not exist: {settings.Backup}", MessageCode.Error);
                     return ReturnCode.Error;
                 }
 
-                string verb = _listOnly ? "Would backup" : "Backing up";
-                if (_logging != LoggingVerbosity.Quiet)
+                string verb = settings.ListOnly ? "Would backup" : "Backing up";
+                if (settings.Logging != LoggingVerbosity.Quiet)
                 {
-                    _outputHandler($"{verb} source directory:\"{_source}\" to \"{_backup}\"");
+                    outputHandler($"{verb} source directory:\"{settings.Source}\" to \"{settings.Backup}\"");
                 }
 
-                if (!_listOnly)
+                if (!settings.ListOnly)
                 {
                     // 2GB file
                     GenerateBackup(allPaths, results);
@@ -404,9 +416,9 @@ public class PhotoCopier
             ConcurrentBag<string> retryMediaPaths = new ConcurrentBag<string>();
             ReorderDir(allPaths, inPlace, false, filesToDelete, results, retryMediaPaths, "Reorder");
 
-            if (_logging != LoggingVerbosity.Quiet)
+            if (settings.Logging != LoggingVerbosity.Quiet)
             {
-                _outputHandler();
+                outputHandler();
             }
 
             int retryCount = 0;
@@ -425,9 +437,9 @@ public class PhotoCopier
 
                 retryMediaPaths.Clear();
 
-                if (_logging != LoggingVerbosity.Quiet)
+                if (settings.Logging != LoggingVerbosity.Quiet)
                 {
-                    _outputHandler($"Retry({retryCount}): {allPaths.Count} entries.");
+                    outputHandler($"Retry({retryCount}): {allPaths.Count} entries.");
                 }
 
                 ReorderDir(allPaths, inPlace, true, filesToDelete, results, retryMediaPaths, $"Reorder retry({retryCount})");
@@ -471,7 +483,7 @@ public class PhotoCopier
         ResultCounts results = new ResultCounts(parent, "Directory cleanup");
         FileSystemAccessRule accessRule = null;
 
-        if (_isAdmin)
+        if (isAdmin)
         {
             // Create a new rule that grants full control to the "Everyone" group
             accessRule = new FileSystemAccessRule(
@@ -486,15 +498,15 @@ public class PhotoCopier
         int total = 0;
         StatusCode statusCode = StatusCode.Total;
 
-        if (_logging != LoggingVerbosity.Quiet)
+        if (settings.Logging != LoggingVerbosity.Quiet)
         {
-            _outputHandler();
+            outputHandler();
         }
 
         do
         {
             emptyDirs.Clear();
-            FindEmptyDirs(_destination, emptyDirs);
+            FindEmptyDirs(settings.Destination, emptyDirs);
             if (emptyDirs.Count == 0 || IsCanceled)
             {
                 break;
@@ -502,9 +514,9 @@ public class PhotoCopier
 
             total += emptyDirs.Count;
             results.Set(ResultCounts.CountKeys.Total, total);
-            _statusUpdate(statusCode, total, "(directory cleanup)");
+            statusUpdate(statusCode, total, "(directory cleanup)");
             statusCode = StatusCode.More;
-            string dverb = _listOnly ? "Would remove" : "Removed";
+            string dverb = settings.ListOnly ? "Would remove" : "Removed";
 
             foreach (string dir in emptyDirs)
             {
@@ -527,15 +539,15 @@ public class PhotoCopier
 
                     diOld.Attributes = FileAttributes.Normal;
 
-                    if (!_listOnly)
+                    if (!settings.ListOnly)
                     {
                         diOld.Delete();
                         results.Increment(ResultCounts.CountKeys.Change);
                     }
 
-                    if (_logging != LoggingVerbosity.Quiet)
+                    if (settings.Logging != LoggingVerbosity.Quiet)
                     {
-                        _outputHandler($"{dverb} empty directory:\"{dir}\"");
+                        outputHandler($"{dverb} empty directory:\"{dir}\"");
                     }
                 }
                 catch (Exception ex)
@@ -545,7 +557,7 @@ public class PhotoCopier
                 finally
                 {
                     results.Increment(ResultCounts.CountKeys.Progress);
-                    _statusUpdate();
+                    statusUpdate();
                 }
             }
         }
@@ -558,7 +570,7 @@ public class PhotoCopier
         ResultCounts results = new ResultCounts(parent, "Duplicate/Junk file cleanup");
         int total = filesToDelete.Count;
         results.Set(ResultCounts.CountKeys.Total, total);
-        _statusUpdate(StatusCode.Total, total, "(duplicate/junk file cleanup)");
+        statusUpdate(StatusCode.Total, total, "(duplicate/junk file cleanup)");
 
         foreach (string path in filesToDelete)
         {
@@ -566,10 +578,10 @@ public class PhotoCopier
 
             try
             {
-                string verb = _listOnly ? "Would delete" : "Deleting";
-                _outputHandler($"{verb} duplicate or junk file:\"{path}\"");
+                string verb = settings.ListOnly ? "Would delete" : "Deleting";
+                outputHandler($"{verb} duplicate or junk file:\"{path}\"");
 
-                if (!_listOnly)
+                if (!settings.ListOnly)
                 {
                     File.Delete(path);
                     results.Increment(ResultCounts.CountKeys.Change);
@@ -582,7 +594,7 @@ public class PhotoCopier
             finally
             {
                 results.Increment(ResultCounts.CountKeys.Progress);
-                _statusUpdate();
+                statusUpdate();
             }
         }
     }
@@ -599,15 +611,15 @@ public class PhotoCopier
         ResultCounts results = new ResultCounts(parent, context);
         int total = sourcePaths.Count;
         results.Set(ResultCounts.CountKeys.Total, total);
-        _statusUpdate(StatusCode.Total, total, $"({context.ToLower()})");
+        statusUpdate(StatusCode.Total, total, $"({context.ToLower()})");
 
         try
         {
-            if (_parallel)
+            if (settings.Parallel)
             {
-                _cancel = new CancellationTokenSource();
+                cancel = new CancellationTokenSource();
                 ParallelOptions parallelOptions = new ParallelOptions();
-                parallelOptions.CancellationToken = _cancel.Token;
+                parallelOptions.CancellationToken = cancel.Token;
 
                 Parallel.ForEach(sourcePaths, parallelOptions, sourceMediaPath => ReorderWork(inRetry, inPlace, filesToRemove, sourceMediaPath, results, retryMediaPaths));
             }
@@ -640,7 +652,7 @@ public class PhotoCopier
                 Debugger.Break();
             }
             parent?.Increment(ResultCounts.CountKeys.Error);
-            _outputHandler($"Error: {reason}. Reason={ex.Message}", MessageCode.Error);
+            outputHandler($"Error: {reason}. Reason={ex.Message}", MessageCode.Error);
         }
     }
 
@@ -657,19 +669,19 @@ public class PhotoCopier
             TryGetDateFromMediaFileName(sourceMediaFileName, dates);
             string fileType = GetDateFromMediaFileContent(sourceMediaPath, dates, parent);
 
-            // 1. Get date from media content
+            // 1. Get date senders media content
             if (fileType == null)
             {
                 parent.Increment(ResultCounts.CountKeys.Skip);
-                if (_logging == LoggingVerbosity.Verbose)
+                if (settings.Logging == LoggingVerbosity.Verbose)
                 {
-                    _outputHandler($"{(isRetry ? _retryText : "")}Skipped - not a media file:\"{sourceMediaPath}\".", MessageCode.Warning);
+                    outputHandler($"{(isRetry ? retryText : "")}Skipped - not a media file:\"{sourceMediaPath}\".", MessageCode.Warning);
                 }
                 return;
             }
 
             DateTime mediaDate = GetBestDate(dates, out bool isBest);
-            _originalFileNameToDate[sourceMediaFileName] = mediaDate;
+            originalFileNameToDate[sourceMediaFileName] = mediaDate;
 
             string targetMediaDir = DirectoryNameFromDate(mediaDate, false, parent, out string targetMediaDirName);
             if (targetMediaDir == null)
@@ -679,14 +691,14 @@ public class PhotoCopier
 
             string targetMediaPath = Path.Combine(targetMediaDir, sourceMediaFileName);
 
-            string prefix = _listOnly ? "Would " : string.Empty;
+            string prefix = settings.ListOnly ? "Would " : string.Empty;
             string verb = inPlace ? $"{prefix}Move" : $"{prefix}Copy";
 
-            if (_listOnly)
+            if (settings.ListOnly)
             {
-                if (_logging != LoggingVerbosity.Quiet)
+                if (settings.Logging != LoggingVerbosity.Quiet)
                 {
-                    _outputHandler($"{(isRetry ? _retryText : "")}{verb} file:\"{sourceMediaFileName}\" to \"{Path.Combine(".", targetMediaDirName)}\"");
+                    outputHandler($"{(isRetry ? retryText : "")}{verb} file:\"{sourceMediaFileName}\" to \"{Path.Combine(".", targetMediaDirName)}\"");
                 }
 
                 return;
@@ -701,8 +713,8 @@ public class PhotoCopier
                 {
                     // already exists
                     // the files are the same - the file is a duplicate
-                    string text = _listOnly ? "List(duplicate)" : "Duplicate";
-                    if (_logging != LoggingVerbosity.Quiet) _outputHandler($"{(isRetry ? _retryText : "")}{text}:\"{sourceMediaFileName}\" in \"{targetMediaDirName}\"");
+                    string text = settings.ListOnly ? "List(duplicate)" : "Duplicate";
+                    if (settings.Logging != LoggingVerbosity.Quiet) outputHandler($"{(isRetry ? retryText : "")}{text}:\"{sourceMediaFileName}\" in \"{targetMediaDirName}\"");
                     parent.Increment(ResultCounts.CountKeys.Duplicate);
 
                     filesToRemove?.Add(sourceMediaPath.ToLower());
@@ -718,12 +730,12 @@ public class PhotoCopier
                         File.Copy(sourceMediaPath, targetMediaPath, false);
                     }
 
-                    if (mediaDate > _notBeforeDate) File.SetCreationTime(targetMediaPath, mediaDate);
+                    if (mediaDate > notBeforeDate) File.SetCreationTime(targetMediaPath, mediaDate);
                     parent.Increment(ResultCounts.CountKeys.Change);
 
-                    if (_logging != LoggingVerbosity.Quiet)
+                    if (settings.Logging != LoggingVerbosity.Quiet)
                     {
-                        _outputHandler($"{(isRetry ? _retryText : "")}{verb} file:\"{sourceMediaFileName}\" to \"{Path.Combine(".", targetMediaDirName)}\"");
+                        outputHandler($"{(isRetry ? retryText : "")}{verb} file:\"{sourceMediaFileName}\" to \"{Path.Combine(".", targetMediaDirName)}\"");
                     }
                 }
             }
@@ -762,14 +774,14 @@ public class PhotoCopier
         finally
         {
             parent.Increment(ResultCounts.CountKeys.Progress);
-            _statusUpdate();
+            statusUpdate();
         }
     }
 
     private DateTime GetBestDate(Dictionary<string, DateTime> dates, out bool isBest)
     {
         DateTime mediaDate = DateTime.MinValue;
-        if (dates.TryGetValue("best", out mediaDate) && mediaDate > _notBeforeDate)
+        if (dates.TryGetValue("best", out mediaDate) && mediaDate > notBeforeDate)
         {
             isBest = true;
             return mediaDate;
@@ -777,13 +789,13 @@ public class PhotoCopier
 
         isBest = false;
 
-        if (dates.TryGetValue("Date/Time Original", out mediaDate) && mediaDate > _notBeforeDate) return mediaDate;
-        if (dates.TryGetValue("8:6", out mediaDate) && mediaDate > _notBeforeDate) return mediaDate;
-        if (dates.TryGetValue("L8", out mediaDate) && mediaDate > _notBeforeDate) return mediaDate;
-        if (dates.TryGetValue("Date/Time", out mediaDate) && mediaDate > _notBeforeDate) return mediaDate;
-        if (dates.TryGetValue("byString", out mediaDate) && mediaDate > _notBeforeDate) return mediaDate;
-        if (dates.TryGetValue("File Modified Date", out mediaDate) && mediaDate > _notBeforeDate) return mediaDate;
-        if (dates.TryGetValue("unix", out mediaDate) && mediaDate > _notBeforeDate) return mediaDate;
+        if (dates.TryGetValue("Date/Time Original", out mediaDate) && mediaDate > notBeforeDate) return mediaDate;
+        if (dates.TryGetValue("8:6", out mediaDate) && mediaDate > notBeforeDate) return mediaDate;
+        if (dates.TryGetValue("L8", out mediaDate) && mediaDate > notBeforeDate) return mediaDate;
+        if (dates.TryGetValue("Date/Time", out mediaDate) && mediaDate > notBeforeDate) return mediaDate;
+        if (dates.TryGetValue("byString", out mediaDate) && mediaDate > notBeforeDate) return mediaDate;
+        if (dates.TryGetValue("File Modified Date", out mediaDate) && mediaDate > notBeforeDate) return mediaDate;
+        if (dates.TryGetValue("unix", out mediaDate) && mediaDate > notBeforeDate) return mediaDate;
 
         return DateTime.MinValue;
     }
@@ -835,7 +847,7 @@ public class PhotoCopier
             {
                 PdfSharp.Pdf.PdfDocument pdfDocument = PdfSharp.Pdf.IO.PdfReader.Open(mediaFile);
                 DateTime date = pdfDocument.Info.CreationDate;
-                if (date > _notBeforeDate)
+                if (date > notBeforeDate)
                 {
                     dates.Add("best", date);
                     return "pdf";
@@ -847,7 +859,7 @@ public class PhotoCopier
             {
                 FileInfo fi = new FileInfo(mediaFile);
                 DateTime date = fi.LastWriteTime;
-                if (date > _notBeforeDate)
+                if (date > notBeforeDate)
                 {
                     dates.Add("best", date);
                     return "mts";
@@ -863,112 +875,138 @@ public class PhotoCopier
     {
         string filename = Path.GetFileNameWithoutExtension(mediaFile);
 
-        string[] parts = null;
-        if (filename.Contains('-'))
+        StringBuilder sb = new StringBuilder();
+        List<string> parts = new List<string>();
+        foreach (char c in filename)
         {
-            parts = filename.Split('-');
-        }
-        else if (filename.Contains("_"))
-        {
-            parts = filename.Split("_");
-        }
-        else
-        {
-            StringBuilder sb = new StringBuilder();
-            foreach (char c in filename)
+            if (char.IsDigit(c))
             {
-                if (char.IsDigit(c))
+                sb.Append(c);
+            }
+            else
+            {
+                if (sb.Length > 0)
                 {
-                    sb.Append(c);
+                    parts.Add(sb.ToString());
+                    sb.Clear();
                 }
             }
-
-            parts = [sb.ToString()];
         }
 
-        List<int> index8 = new List<int>();
-        List<int> index10 = new List<int>();
-        List<int> index6 = new List<int>();
-
-        for (int ii = 0; ii < parts.Length; ii++)
+        if (sb.Length > 0)
         {
-            string part = parts[ii];
-            
-            if (part.Length == 8)
-            {
-                index8.Add(ii);
-                continue;
-            }
-
-            if (part.Length == 10)
-            {
-                index10.Add(ii);
-                continue;
-            }
-
-            if (part.Length == 6)
-            {
-                index6.Add(ii);
-                continue;
-            }
+            parts.Add(sb.ToString());
         }
 
-        if (index6.Count > 0 && index8.Count > 0)
-        {
-            bool done = false;
-            foreach (int i6 in index6)
-            {
-                if (done) break;
+        int year = 0;
+        int month = 0;
+        int day = 0;
+        int hour = -1;
+        int minute = -1;
+        int second = -1;
+        int milliseconds = -1;
 
-                foreach (int i8 in index8)
+        Queue<string[]> queue = new Queue<string[]>();
+        queue.Enqueue(parts.ToArray());
+
+        // try to find a date in the filename
+        while (queue.Count > 0 && !IsCanceled)
+        {
+            string[] queueParts = queue.Dequeue();
+
+            foreach (string part in queueParts)
+            {
+                if (IsCanceled) return;
+
+                if (part.Length == 9)
                 {
-                    if (done) break;
+                    string[] subparts = SplitByLength(part, 2, 2, 2, 3);
+                    queue.Enqueue(subparts);
+                    continue;
+                }
 
-                    // "yyyyMMdd" + "hhmmss"
-                    string t = $"{parts[i8]}{parts[i6]}";
-                    string[] pieces = SplitByLength(t, 4, 2, 2, 2, 2, 2);
-                    if (pieces.Length > 5)
+                if (part.Length == 8)
+                {
+                    string[] subparts = SplitByLength(part, 4, 2, 2);
+                    queue.Enqueue(subparts);
+                    continue;
+                }
+
+                if (part.Length == 6)
+                {
+                    string[] subparts = SplitByLength(part, 2, 2, 2);
+                    queue.Enqueue(subparts);
+                    continue;
+                }
+
+                if (year == 0 && part.Length == 4 && int.TryParse(part, out year) && year >= 1900 && year <= DateTime.Now.Year)
+                {
+                    continue;
+                }
+                if (year == 0 && part.Length == 2 && int.TryParse(part, out year) && year >= 1900 && year <= DateTime.Now.Year)
+                {
+                    year += 2000;
+                    continue;
+                }
+                if (year > 0 && month == 0 && part.Length == 2 && int.TryParse(part, out month) && month >= 1 && month <= 12)
+                {
+                    continue;
+                }
+                if (month > 0 && day == 0 && part.Length == 2 && int.TryParse(part, out day) && day >= 1 && day <= 31)
+                {
+                    continue;
+                }
+                if (day > 0 && hour == -1 && part.Length == 2 && int.TryParse(part, out hour) && hour >= 0 && hour <= 23)
+                {
+                    continue;
+                }
+                if (hour >= 0 && minute == -1 && part.Length == 2 && int.TryParse(part, out minute) && minute >= 0 && minute <= 59)
+                {
+                    continue;
+                }
+                if (minute >= 0 && second == -1 && part.Length == 2 && int.TryParse(part, out second) && second >= 0 && second <= 59)
+                {
+                    continue;
+                }
+                if (second >= 0 && milliseconds == -1 && part.Length == 3 && int.TryParse(part, out milliseconds) && milliseconds >= 0 && milliseconds < 1000)
+                {
+                    continue;
+                }
+            }
+        }
+
+        try
+        {
+            if (year > 0 && month > 0 && day > 0)
+            {
+                DateTime date;
+                string fromText = null;
+
+                if (hour >= 0 && minute >= 0 && second >= 0)
+                {
+                    if (milliseconds >= 0)
                     {
-                        if (DateTime.TryParse($"{pieces[0]}-{pieces[1]}-{pieces[2]} {pieces[3]}:{pieces[4]}:{pieces[5]}", out DateTime date))
-                        {
-                            dates["8:6"] = date;
-                        }
+                        date = new DateTime(year, month, day, hour, minute, second, milliseconds);
                     }
+                    else
+                    {
+                        date = new DateTime(year, month, day, hour, minute, second);
+                    }
+
+                    fromText = "8:6";
                 }
+                else
+                {
+                    date = new DateTime(year, month, day);
+                    fromText = "L8";
+                }
+
+                dates[fromText] = date;
             }
         }
-
-        for (int ii = 0; ii < parts.Length; ii++)
+        catch
         {
-            string part = parts[ii];
-            if (part.Length == 10)
-            {
-                // might be MMddyyhhmm
-                string[] pieces = SplitByLength(part, 2, 2, 2, 2, 2);
-                if (pieces.Length > 4)
-                {
-                    if (DateTime.TryParse($"{pieces[0]}-{pieces[1]}-{pieces[2]} {pieces[3]}:{pieces[4]}", out DateTime date))
-                    {
-                        dates[$"L10/4"] = date;
-                    }
-                }
-                else if (pieces.Length > 2)
-                {
-                    if (DateTime.TryParse($"{pieces[0]}-{pieces[1]}-{pieces[2]}", out DateTime date))
-                    {
-                        dates[$"L10/2"] = date;
-                    }
-                }
-            }
-            else if (part.Length == 8)
-            {
-                // might be yyyyMMdd
-                string[] pieces = SplitByLength(filename, 4, 2, 2);
-                if (DateTime.TryParse($"{pieces[0]}-{pieces[1]}-{pieces[2]}", out DateTime date))
-                {
-                    dates[$"L8"] = date;
-                }
-            }
+            // just eat date parsing exceptions
         }
     }
 
@@ -1080,7 +1118,7 @@ public class PhotoCopier
                 if (tag.Name.Contains("date", StringComparison.OrdinalIgnoreCase))
                 {
                     DateTime date = ParseDate(tag.Description);
-                    if (date > _notBeforeDate)
+                    if (date > notBeforeDate)
                     {
                         dates[tag.Name] = date;
                     }
@@ -1225,10 +1263,10 @@ public class PhotoCopier
 
         try
         {
-            ConcurrentDictionary<string, MediaInfo> mediaKeys = new ConcurrentDictionary<string, MediaInfo>(StringComparer.OrdinalIgnoreCase);
-            if (_logging != LoggingVerbosity.Quiet) _outputHandler($"Processing dir:{_source}");
+            ConcurrentDictionary<string, TakeoutInfo> mediaKeys = new ConcurrentDictionary<string, TakeoutInfo>(StringComparer.OrdinalIgnoreCase);
+            if (settings.Logging != LoggingVerbosity.Quiet) outputHandler($"Processing dir:{settings.Source}");
 
-            foreach (string entity in System.IO.Directory.EnumerateFiles(_source, _fileFilter, SearchOption.AllDirectories))
+            foreach (string entity in System.IO.Directory.EnumerateFiles(settings.Source, settings.Filter, SearchOption.TopDirectoryOnly))
             {
                 if (IsCanceled) break;
 
@@ -1256,7 +1294,7 @@ public class PhotoCopier
 
             if (mediaKeys.IsEmpty) return ReturnCode.HadIssues;
 
-            ConcurrentQueue<MediaInfo> retryMediaKeys = new ConcurrentQueue<MediaInfo>();
+            ConcurrentQueue<TakeoutInfo> retryMediaKeys = new ConcurrentQueue<TakeoutInfo>();
             DoMedia(false, results, mediaKeys, retryMediaKeys, "Process media");
 
             int retryCount = 0;
@@ -1266,12 +1304,12 @@ public class PhotoCopier
                 mediaKeys.Clear();
                 if (retryMediaKeys.IsEmpty) break;
 
-                while (retryMediaKeys.TryDequeue(out MediaInfo result))
+                while (retryMediaKeys.TryDequeue(out TakeoutInfo result))
                 {
                     mediaKeys[result.EntryKey] = result;
                 }
 
-                _outputHandler($"Retry({retryCount}): {mediaKeys.Count} entries.");
+                outputHandler($"Retry({retryCount}): {mediaKeys.Count} entries.");
 
                 DoMedia(true, results, mediaKeys, retryMediaKeys, $"Process media retry({retryCount})");
 
@@ -1296,7 +1334,7 @@ public class PhotoCopier
         return ReturnCode.Error;
     }
 
-    private void DoMedia(bool inRetry, ResultCounts parent, ConcurrentDictionary<string, MediaInfo> mediaKeys, ConcurrentQueue<MediaInfo> retryMediaKeys, string context)
+    private void DoMedia(bool inRetry, ResultCounts parent, ConcurrentDictionary<string, TakeoutInfo> mediaKeys, ConcurrentQueue<TakeoutInfo> retryMediaKeys, string context)
     {
         ResultCounts results = new ResultCounts(parent, context);
 
@@ -1304,14 +1342,14 @@ public class PhotoCopier
         {
             int total = mediaKeys.Count;
             results.Set(ResultCounts.CountKeys.Total, total);
-            _statusUpdate(StatusCode.Total, total, $"({context.ToLower()})");
+            statusUpdate(StatusCode.Total, total, $"({context.ToLower()})");
 
-            if (_parallel && !inRetry)
+            if (settings.Parallel && !inRetry)
             {
-                _cancel = new CancellationTokenSource();
+                cancel = new CancellationTokenSource();
                 ParallelOptions parallelOptions = new ParallelOptions
                 {
-                    CancellationToken = _cancel.Token
+                    CancellationToken = cancel.Token
                 };
 
                 Parallel.ForEach(mediaKeys.Keys, parallelOptions, entryKey => ProcessEntry(entryKey, false, results, mediaKeys, retryMediaKeys));
@@ -1331,12 +1369,12 @@ public class PhotoCopier
         }
     }
 
-    private void ProcessZip(string zip, ResultCounts parent, ConcurrentDictionary<string, MediaInfo> mediaKeys)
+    private void ProcessZip(string zip, ResultCounts parent, ConcurrentDictionary<string, TakeoutInfo> infoKeys)
     {
         try
         {
             ZipArchive archive = ZipFile.OpenRead(zip);
-            _archives.Add(archive);
+            archives.Add(archive);
 
             parent.Increment(ResultCounts.CountKeys.Total);
 
@@ -1361,84 +1399,43 @@ public class PhotoCopier
                 if (dir == null)
                 {
                     parent.Increment(ResultCounts.CountKeys.Error);
-                    _outputHandler($"Error: root, {root} is not a directory. Reason=InvalidPath", MessageCode.Error);
+                    outputHandler($"Error: root, {root} is not a directory. Reason=InvalidPath", MessageCode.Error);
                     continue;
                 }
 
-                string[] parts = file.Split(_separator, 2);
+                string[] fileParts = file.Split(fileNameSeparator, 2);
 
                 string ext = null;
-                if (parts.Length > 1) ext = parts[1];
-                string key = Path.Combine(dir, parts[0]);
+                if (fileParts.Length > 1) ext = fileParts[1];
+                string key = Path.Combine(dir, fileParts[0]);
 
-                if (!entries.TryGetValue(key, out Dictionary<string, ZipArchiveEntry> value))
+                if (!entries.TryGetValue(key, out Dictionary<string, ZipArchiveEntry> values))
                 {
-                    value = new Dictionary<string, ZipArchiveEntry>(StringComparer.OrdinalIgnoreCase);
-                    entries[key] = value;
+                    values = new Dictionary<string, ZipArchiveEntry>(StringComparer.OrdinalIgnoreCase);
+                    entries[key] = values;
                 }
 
-                Dictionary<string, ZipArchiveEntry> values = value;
                 if (string.IsNullOrEmpty(ext) || (values.ContainsKey(ext)))
                 {
                     if (Debugger.IsAttached)
                     {
                         Debug.WriteLine($"Extension is null or in the skip list: {ext}");
-                        Debugger.Break();
                     }
                     continue;
                 }
 
-                value[ext] = entry;
+                values[ext] = entry;
             }
 
-            if (_logging != LoggingVerbosity.Quiet) _outputHandler($"Processing zip:{zip}, entries count:{entries.Count}");
+            if (settings.Logging != LoggingVerbosity.Quiet) outputHandler($"Processing zip:{zip}, entries count:{entries.Count}");
 
             // group the media and meta data with the entries by media name
             foreach (string key in entries.Keys)
             {
                 if (IsCanceled) break;
+
                 Dictionary<string, ZipArchiveEntry> values = entries[key];
-
-                if (!mediaKeys.TryGetValue(key, out MediaInfo mediaInfo))
-                {
-                    mediaInfo = new MediaInfo { EntryKey = key };
-                }
-
-                foreach (string valueKey in values.Keys)
-                {
-                    if (IsCanceled) break;
-
-                    ZipArchiveEntry archiveEntry = values[valueKey];
-
-                    if (valueKey.EndsWith("json", StringComparison.OrdinalIgnoreCase))
-                    {
-                        using (Stream zipStream = archiveEntry.Open())
-                        {
-                            if (zipStream.CanRead)
-                            {
-                                using (StreamReader reader = new StreamReader(zipStream, Encoding.UTF8))
-                                {
-                                    mediaInfo.MetaJson = reader.ReadToEnd();
-                                }
-                            }
-                        }
-                    }
-                    else// if (!valueKey.EndsWith("htm", StringComparison.OrdinalIgnoreCase) && !valueKey.EndsWith("html", StringComparison.OrdinalIgnoreCase))
-                    {
-                        string ext = $".{valueKey}";
-                        if (!junkExtensions.Contains(ext))
-                        {
-                            mediaInfo.EntryName = archiveEntry.FullName;
-                            mediaInfo.ArchivePath = zip;
-                        }
-                        else
-                        {
-                        }
-                    }
-                }
-
-                mediaKeys[key] = mediaInfo;
-                mediaInfo = null;
+                ReadInfo(key, infoKeys, values, zip);
             }
         }
         catch (Exception ex)
@@ -1447,27 +1444,338 @@ public class PhotoCopier
         }
     }
 
-    private string DirectoryNameFromDate(DateTime date, bool isRetry, ResultCounts parent, out string newTargetDirName)
+    private DataType GetDataType(string key)
     {
-        newTargetDirName = "no-date";
+        string[] dirParts = key.Split(zipDirSeparator);
+        if (dirParts.Length < 2 || !dirParts[0].Equals("takeout", StringComparison.OrdinalIgnoreCase))
+        {
+            return DataType.Unknown;
+        }
 
-        if (date > _notBeforeDate)
+        if (key.Contains("locked", StringComparison.OrdinalIgnoreCase))
+        {
+            // special case for locked takeout
+            return DataType.Locked;
+        }
+
+        string archiveType = dirParts[1].ToLower();
+        switch (archiveType)
+        {
+            default:
+            {
+                if (Debugger.IsAttached) { Debugger.Break(); }
+                return DataType.Unknown;
+            }
+
+            case "access log activity":
+            {
+                return DataType.AccessLogActivity;
+            }
+
+            case "my activity":
+            {
+                return DataType.MyActivity;
+            }
+
+            case "google pay":
+            {
+                return DataType.GooglePay;
+            }
+
+            case "maps (your places)":
+            {
+                return DataType.MapsYourPlaces;
+            }
+
+            case "google play store":
+            {
+                return DataType.PlayStore;
+            }
+
+            case "saved":
+            {
+                return DataType.Saved;
+            }
+
+            case "fitbit":
+            {
+                return DataType.FitBit;
+            }
+
+            case "timeline":
+            {
+                return DataType.TimeLine;
+            }
+
+            case "google play books":
+            {
+                return DataType.PlayBooks;
+            }
+
+            case "google finance":
+            {
+                return DataType.Finance;
+            }
+
+            case "news":
+            {
+                return DataType.News;
+            }
+
+            case "gemini":
+            {
+                return DataType.Gemini;
+            }
+
+            case "calendar":
+            {
+                return DataType.Calendar;
+            }
+
+            case "alerts":
+            {
+                return DataType.Alerts;
+            }
+
+            case "tasks":
+            {
+                return DataType.Tasks;
+            }
+
+            case "recorder":
+            {
+                return DataType.Recorder;
+            }
+
+            case "keep":
+            {
+                return DataType.Keep;
+            }
+
+            case "google play movies & tv":
+            {
+                return DataType.PlayMoviesTV;
+            }
+
+            case "google feedback":
+            {
+                return DataType.Feedback;
+            }
+
+            case "google chat":
+            {
+                return DataType.Chat;
+            }
+
+            case "google workspace marketplace":
+            {
+                return DataType.WorkspaceMarketplace;
+            }
+
+            case "android device configuration service":
+            {
+                return DataType.DeviceConfigurationService;
+            }
+
+            case "chrome":
+            {
+                return DataType.Chrome;
+            }
+
+            case "groups":
+            {
+                return DataType.Groups;
+            }
+
+            case "google business profile":
+            {
+                return DataType.BusinessProfile;
+            }
+
+            case "google help communities":
+            {
+                return DataType.HelpCommunities;
+            }
+
+            case "maps":
+            {
+                return DataType.Maps;
+            }
+
+            case "google meet":
+            {
+                return DataType.Meet;
+            }
+
+            case "voice":
+            {
+                return DataType.Voice;
+            }
+
+            case "google account":
+            {
+                return DataType.Account;
+            }
+
+            case "fit":
+            {
+                return DataType.Fit;
+            }
+
+            case "search notifications":
+            {
+                return DataType.SearchNotifications;
+            }
+
+            case "google shopping":
+            {
+                return DataType.Shopping;
+            }
+
+            case "google store":
+            {
+                return DataType.Store;
+            }
+
+            case "blogger":
+            {
+                return DataType.Blogger;
+            }
+
+            case "profile":
+            {
+                return DataType.Profile;
+            }
+
+            case "home app":
+            {
+                return DataType.HomeApp;
+            }
+
+            case "contacts":
+            {
+                return DataType.Contacts;
+            }
+
+            case "google photos":
+            {
+                return DataType.Photos;
+            }
+
+            case "archive_browser":
+            {
+                return DataType.ArchiveBrowser;
+            }
+
+            case "drive":
+            {
+                return DataType.Drive;
+            }
+
+            case "mail":
+            {
+                return DataType.Mail;
+            }
+
+            case "youtube and youtube music":
+            {
+                return DataType.YouTube;
+            }
+
+            case "discover":
+            {
+                return DataType.Discover;
+            }
+
+            case "assignments":
+            {
+                return DataType.Assignments;
+            }
+        }
+    }
+
+    private void ReadInfo(string key, ConcurrentDictionary<string, TakeoutInfo> mediaKeys, Dictionary<string, ZipArchiveEntry> values, string zip)
+    {
+        try
+        {
+            if (!mediaKeys.TryGetValue(key, out TakeoutInfo mediaInfo))
+            {
+                mediaInfo = new TakeoutInfo { EntryKey = key };
+            }
+
+            foreach (string valueKey in values.Keys)
+            {
+                if (IsCanceled) break;
+
+                ZipArchiveEntry archiveEntry = values[valueKey];
+
+                if (valueKey.EndsWith("json", StringComparison.OrdinalIgnoreCase))
+                {
+                    using (Stream zipStream = archiveEntry.Open())
+                    {
+                        if (zipStream.CanRead)
+                        {
+                            using (StreamReader reader = new StreamReader(zipStream, Encoding.UTF8))
+                            {
+                                mediaInfo.MetaJson = reader.ReadToEnd();
+                            }
+                        }
+                    }
+                }
+                else// if (!valueKey.EndsWith("htm", StringComparison.OrdinalIgnoreCase) && !valueKey.EndsWith("html", StringComparison.OrdinalIgnoreCase))
+                {
+                    string ext = $".{valueKey}";
+                    if (!junkExtensions.Contains(ext))
+                    {
+                        mediaInfo.EntryName = archiveEntry.FullName;
+                        mediaInfo.ArchivePath = zip;
+                    }
+                }
+            }
+
+            mediaKeys[key] = mediaInfo;
+            mediaInfo = null;
+        }
+        catch (Exception ex)
+        {
+            outputHandler(ex.Message, MessageCode.Error);
+            if (Debugger.IsAttached)
+            {
+                Debugger.Break();
+            }
+        }
+    }
+
+    private string DirectoryNameFromDataType(DateTime date, DataType dataType, string fullName, bool isRetry, ResultCounts parent, out string newTargetDirName)
+    {
+        newTargetDirName = dataType.ToString();
+        string dir = Path.GetDirectoryName(fullName);
+        string subDir = Path.GetFileName(dir);
+        string dateString = null;
+
+        if (dataType == DataType.Photos || dataType == DataType.Locked || dataType == DataType.Mail) subDir = null;
+
+        if (date > notBeforeDate)
         {
             string year = $"{date:yyyy}";
             string month = $"{date:MM}";
             string day = $"{date:dd}";
             string hour = $"{date:HH}";
 
-            newTargetDirName = _pattern.Replace("$y", year, StringComparison.OrdinalIgnoreCase)
+            dateString = settings.Pattern.Replace("$y", year, StringComparison.OrdinalIgnoreCase)
                 .Replace("$m", month)
                 .Replace("$d", day, StringComparison.OrdinalIgnoreCase)
                 .Replace("$h", hour, StringComparison.OrdinalIgnoreCase)
                 .Replace("$M", MonthName(date.Month));
         }
 
-        string newFilePath = Path.GetFullPath(Path.Combine(_destination, newTargetDirName));
+        string newFilePath = string.IsNullOrEmpty(dateString) ?
+            Path.GetFullPath(Path.Combine(settings.Destination, newTargetDirName)) :
+            Path.GetFullPath(Path.Combine(settings.Destination, newTargetDirName, dateString));
 
-        if (newFilePath == null || !newFilePath.StartsWith(_destination, StringComparison.OrdinalIgnoreCase))
+        if (!string.IsNullOrEmpty(subDir) && !newTargetDirName.Equals(subDir, StringComparison.OrdinalIgnoreCase)) newFilePath = Path.Combine(newFilePath, subDir);
+
+        if (newFilePath == null || !newFilePath.StartsWith(settings.Destination, StringComparison.OrdinalIgnoreCase))
         {
             if (Debugger.IsAttached)
             {
@@ -1476,7 +1784,45 @@ public class PhotoCopier
             }
 
             parent.Increment(ResultCounts.CountKeys.Error);
-            _outputHandler($"{(isRetry ? _retryText : "")}Error: Invalid target file path:\"{newFilePath ?? "null"}\"", MessageCode.Error);
+            outputHandler($"{(isRetry ? retryText : "")}Error: Invalid target file path:\"{newFilePath ?? "null"}\"", MessageCode.Error);
+            return null;
+        }
+
+        return newFilePath;
+    }
+
+    private string DirectoryNameFromDate(DateTime date, bool isRetry, ResultCounts parent, out string newTargetDirName)
+    {
+        newTargetDirName = string.Empty;
+
+        if (date > notBeforeDate)
+        {
+            string year = $"{date:yyyy}";
+            string month = $"{date:MM}";
+            string day = $"{date:dd}";
+            string hour = $"{date:HH}";
+
+            newTargetDirName = settings.Pattern.Replace("$y", year, StringComparison.OrdinalIgnoreCase)
+                .Replace("$m", month)
+                .Replace("$d", day, StringComparison.OrdinalIgnoreCase)
+                .Replace("$h", hour, StringComparison.OrdinalIgnoreCase)
+                .Replace("$M", MonthName(date.Month));
+        }
+
+        string newFilePath = string.IsNullOrEmpty(newTargetDirName) ? 
+            Path.GetFullPath(Path.Combine(settings.Destination)) :
+            Path.GetFullPath(Path.Combine(settings.Destination, newTargetDirName));
+
+        if (newFilePath == null || !newFilePath.StartsWith(settings.Destination, StringComparison.OrdinalIgnoreCase))
+        {
+            if (Debugger.IsAttached)
+            {
+                Debug.WriteLine($"newFilePath null or does not start with the destination.");
+                Debugger.Break();
+            }
+
+            parent.Increment(ResultCounts.CountKeys.Error);
+            outputHandler($"{(isRetry ? retryText : "")}Error: Invalid target file path:\"{newFilePath ?? "null"}\"", MessageCode.Error);
             return null;
         }
 
@@ -1502,7 +1848,7 @@ public class PhotoCopier
                 if (dictionaries == null)
                 {
                     parent.Increment(ResultCounts.CountKeys.Error);
-                    _outputHandler($"Error: Could not deserialize object {jarray}. Reason=InvalidObject", MessageCode.Error);
+                    outputHandler($"Error: Could not deserialize object {jarray}. Reason=InvalidObject", MessageCode.Error);
                     continue;
                 }
 
@@ -1623,7 +1969,7 @@ public class PhotoCopier
         }
         catch (Exception ex)
         {
-            HandleExceptions(ex, parent, $"Could not get date from media: {text}");
+            HandleExceptions(ex, parent, $"Could not get date senders media: {text}");
         }
     }
 
@@ -1633,7 +1979,7 @@ public class PhotoCopier
         {
             DateTime origin = new DateTime(1970, 1, 1, 0, 0, 0, 0);
             DateTime date = origin.AddSeconds(timestamp);
-            if (date > _notBeforeDate)
+            if (date > notBeforeDate)
             {
                 dates["unix"] = date;
             }
@@ -1649,11 +1995,13 @@ public class PhotoCopier
         return new Configs(_paramTypes, true);
     }
 
-    private void ProcessEntry(string entryKey, bool isRetry, ResultCounts parent, ConcurrentDictionary<string, MediaInfo> mediaKeys, ConcurrentQueue<MediaInfo> retryMediaKeys)
+    private void ProcessEntry(string entryKey, bool isRetry, ResultCounts parent, ConcurrentDictionary<string, TakeoutInfo> mediaKeys, ConcurrentQueue<TakeoutInfo> retryMediaKeys)
     {
         if (IsCanceled) return;
 
-        bool foundEntry = mediaKeys.TryGetValue(entryKey, out MediaInfo mediaInfo);
+        DataType dataType = GetDataType(entryKey);
+
+        bool foundEntry = mediaKeys.TryGetValue(entryKey, out TakeoutInfo mediaInfo);
 
         ZipArchive archive = null;
         ZipArchiveEntry entry = null;
@@ -1670,7 +2018,7 @@ public class PhotoCopier
                 }
 
                 parent.Increment(ResultCounts.CountKeys.Error);
-                _outputHandler($"{(isRetry ? _retryText : "")}Error: Invalid zip entry key: {entryKey}", MessageCode.Error);
+                outputHandler($"{(isRetry ? retryText : "")}Error: Invalid zip entry key: {entryKey}", MessageCode.Error);
                 return;
             }
 
@@ -1688,63 +2036,96 @@ public class PhotoCopier
 
                     Dictionary<string, DateTime> dates = new Dictionary<string, DateTime>();
 
-                    // 1. get date from media metadata
-                    string fileType = GetDateFromMediaStream(zipStream, dates, parent);
-
-                    if (fileType == null)
+                    if (dataType == DataType.Locked && !settings.KeepLocked)
                     {
-                        if (Debugger.IsAttached)
+                        // skip locked files
+                        if (settings.Logging != LoggingVerbosity.Quiet)
                         {
-                            Debug.WriteLine($"Invalid media file type: {fileType ?? "null"}");
-                            Debugger.Break();
+                            outputHandler($"{(isRetry ? retryText : "")}Skipping locked file: {entry.Name}", MessageCode.Warning);
                         }
-
-                        parent.Increment(ResultCounts.CountKeys.Error);
-                        _outputHandler($"{(isRetry ? _retryText : "")}Error: Invalid media file type", MessageCode.Error);
+                        parent.Increment(ResultCounts.CountKeys.Skip);
                         return;
+                    }
+
+                    bool isMediaType = dataType == DataType.Photos || dataType == DataType.Locked;
+
+                    if (isMediaType)
+                    {
+                        // 1. get date senders media metadata
+                        string fileType = GetDateFromMediaStream(zipStream, dates, parent);
+
+                        if (fileType == null)
+                        {
+                            if (Debugger.IsAttached)
+                            {
+                                Debug.WriteLine($"Invalid media file type: {fileType ?? "null"}");
+                                Debugger.Break();
+                            }
+
+                            parent.Increment(ResultCounts.CountKeys.Error);
+                            outputHandler($"{(isRetry ? retryText : "")}Error: Invalid media file type", MessageCode.Error);
+                            return;
+                        }
                     }
 
                     if (mediaInfo.MetaJson != null)
                     {
-                        // 2. get date from archive meta data
+                        // 2. get date senders archive meta data
                         GetDateFromTakeoutMetadata(mediaInfo.MetaJson, dates, parent);
                     }
 
-                    // 3. get date from entry name
+                    // 3. get date senders entry name
                     TryGetDateFromMediaFileName(entry.FullName, dates);
 
                     DateTime mediaDate = GetBestDate(dates, out bool isBest);
 
-                    string targetMediaDir = DirectoryNameFromDate(mediaDate, isRetry, parent, out string targetMediaDirName);
+                    string targetMediaDirName = null;
+                    string targetMediaDir = DirectoryNameFromDataType(mediaDate, dataType, entry.FullName, isRetry, parent, out targetMediaDirName);
+
                     string targetMediaFile = Path.GetFileName(entry.FullName);
                     string targetMediaPath = Path.Combine(targetMediaDir, targetMediaFile);
 
-                    _originalFileNameToDate[targetMediaFile] = mediaDate;
+                    originalFileNameToDate[targetMediaFile] = mediaDate;
 
-                    string prefix = _listOnly ? "Would " : string.Empty;
+                    string prefix = settings.ListOnly ? "Would " : string.Empty;
                     string verb = $"{prefix}Copy";
 
-                    if (_listOnly)
+                    if (settings.ListOnly)
                     {
-                        if (_logging != LoggingVerbosity.Quiet)
+                        if (settings.Logging != LoggingVerbosity.Quiet)
                         {
-                            _outputHandler($"{(isRetry ? _retryText : "")}{verb} file:\"{entry.Name}\" to \"{Path.Combine(".", targetMediaDirName)}\"");
+                            outputHandler($"{(isRetry ? retryText : "")}{verb} file:\"{entry.Name}\" to \"{Path.Combine(".", targetMediaDirName)}\"");
                         }
 
                         return;
                     }
 
                     System.IO.Directory.CreateDirectory(targetMediaDir);
-                    bool alreadyExits = ResolveFileConflict(isRetry, parent, entry.Length, ref targetMediaPath);
+
+                    string originalExtension = Path.GetExtension(entry.Name);
+                    string outputTargetPath = targetMediaPath;
+                    if (dataType == DataType.Locked)
+                    {
+                        string targetFile = Path.GetFileName(outputTargetPath);
+                        string targetDir = Path.GetDirectoryName(outputTargetPath) ?? string.Empty;
+                        string newTargetFile = Path.GetFileNameWithoutExtension(targetFile) + ".twlock";
+                        outputTargetPath = Path.Combine(targetDir, newTargetFile);
+                    }
+
+                    bool alreadyExists = false;
+                    if (dataType != DataType.Locked)
+                    {
+                        alreadyExists = ResolveFileConflict(isRetry, parent, entry.Length, ref outputTargetPath);
+                    }
 
                     try
                     {
-                        if (alreadyExits)
+                        if (alreadyExists)
                         {
                             // already exists
                             // the files are the same - the entry is a duplicate
-                            string text = _listOnly ? "List(duplicate)" : "Duplicate";
-                            if (_logging == LoggingVerbosity.Verbose) _outputHandler($"{(isRetry ? _retryText : "")}{text}:\"{entry.Name}\" in \"{targetMediaDirName}\"");
+                            string text = settings.ListOnly ? "List(duplicate)" : "Duplicate";
+                            if (settings.Logging == LoggingVerbosity.Verbose) outputHandler($"{(isRetry ? retryText : "")}{text}:\"{entry.Name}\" in \"{targetMediaDirName}\"");
                             parent.Increment(ResultCounts.CountKeys.Duplicate);
                         }
                         else
@@ -1752,20 +2133,70 @@ public class PhotoCopier
                             // the file does not exist - copy the entry to the file
                             const int mb = 1024 * 1024;
                             int bufferSize = entry.Length >= mb ? mb : Convert.ToInt32(entry.Length);
-                            using (FileStream fileStream = new FileStream(targetMediaPath, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize, true))
+
+                            if (bufferSize > 0)
                             {
-                                zipStream.Seek(0, SeekOrigin.Begin);
-                                zipStream.CopyTo(fileStream, bufferSize);
+                                bool setFileDate = true;
+                                switch (dataType)
+                                {
+                                    case DataType.Mail:
+                                    {
+                                        setFileDate = false; // do not set the file date for mail files
+                                        zipStream.Seek(0, SeekOrigin.Begin);
+                                        ReadMBoxFile(zipStream, isRetry, parent, targetMediaPath);
+                                        break;
+                                    }
+
+                                    default:
+                                    {
+                                        using (FileStream fileStream = new FileStream(outputTargetPath, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize, true))
+                                        {
+                                            zipStream.Seek(0, SeekOrigin.Begin);
+                                            switch (dataType)
+                                            {
+                                                case DataType.Locked:
+                                                {
+                                                    FileEncryption.EncryptFile(zipStream, fileStream, password, originalExtension, mediaDate);
+                                                    break;
+                                                }
+
+                                                default:
+                                                {
+                                                    // no special handling for other data types
+                                                    zipStream.CopyTo(fileStream, bufferSize);
+                                                    break;
+                                                }
+                                            }
+                                        }
+
+                                        break;
+                                    }
+                                }
+
+                                if (setFileDate && mediaDate > notBeforeDate) File.SetCreationTime(outputTargetPath, mediaDate);
+
+                                if (settings.Logging != LoggingVerbosity.Quiet)
+                                {
+                                    outputHandler($"{(isRetry ? retryText : "")}{verb} file:\"{entry.Name}\" to \"{Path.Combine(".", targetMediaDirName)}\"");
+                                }
+
                                 parent.Increment(ResultCounts.CountKeys.Change);
                             }
-
-                            if (mediaDate > _notBeforeDate) File.SetCreationTime(targetMediaPath, mediaDate);
-                            if (_logging != LoggingVerbosity.Quiet)
+                            else
                             {
-                                _outputHandler($"{(isRetry ? _retryText : "")}{verb} file:\"{entry.Name}\" to \"{Path.Combine(".", targetMediaDirName)}\"");
-                            }
+                                // zero byte content - create empty file
+                                using (FileStream fileStream = new FileStream(outputTargetPath, FileMode.Create, FileAccess.Write, FileShare.None, 128, true))
+                                {
+                                }
 
-                            parent.Increment(ResultCounts.CountKeys.Change);
+                                if (mediaDate > notBeforeDate) File.SetCreationTime(outputTargetPath, mediaDate);
+                                if (settings.Logging != LoggingVerbosity.Quiet)
+                                {
+                                    outputHandler($"{(isRetry ? retryText : "")}{verb} empty file:\"{entry.Name}\" to \"{Path.Combine(".", targetMediaDirName)}\"");
+                                }
+
+                                parent.Increment(ResultCounts.CountKeys.Change);
+                            }
                         }
                     }
                     catch (IOException ioex)
@@ -1776,11 +2207,11 @@ public class PhotoCopier
                             return;
                         }
 
-                        HandleExceptions(ioex, parent, $"Could not create {targetMediaPath}");
+                        HandleExceptions(ioex, parent, $"Could not create {outputTargetPath}");
                     }
                     catch (Exception ex)
                     {
-                        HandleExceptions(ex, parent, $"Could not create {targetMediaPath}");
+                        HandleExceptions(ex, parent, $"Could not create {outputTargetPath}");
                     }
                 }
             }
@@ -1792,7 +2223,7 @@ public class PhotoCopier
         finally
         {
             parent.Increment(ResultCounts.CountKeys.Progress);
-            _statusUpdate();
+            statusUpdate();
         }
 
         return;
@@ -1949,7 +2380,7 @@ public class PhotoCopier
         }
         catch (Exception ex)
         {
-            HandleExceptions(ex, parent, $"Could not validate pattern {text}");
+            HandleExceptions(ex, parent, $"Could not validate settings.Pattern {text}");
             return false;
         }
 
@@ -2012,21 +2443,21 @@ public class PhotoCopier
         DateTime utcNow = DateTime.UtcNow;
         object lockObj = new object();
 
-        string subDir = Path.Combine(_backup, $"TOWBackup-{DateString(utcNow)}");
-        string rtext = _source + "\\";
+        string subDir = Path.Combine(settings.Backup, $"TOWBackup-{DateString(utcNow)}");
+        string rtext = settings.Source + "\\";
 
-        _outputHandler($"Creating backup of media directory: {_source} to {subDir}");
+        outputHandler($"Creating backup of media directory: {settings.Source} to {subDir}");
 
         ResultCounts results = new ResultCounts(parent, "Backup");
         int total = filesToBackup.Count;
         results.Set(ResultCounts.CountKeys.Total, total);
-        _statusUpdate(StatusCode.Total, total, "(backup)");
+        statusUpdate(StatusCode.Total, total, "(backup)");
 
-        if (_parallel)
+        if (settings.Parallel)
         {
-            _cancel = new CancellationTokenSource();
+            cancel = new CancellationTokenSource();
             ParallelOptions parallelOptions = new ParallelOptions();
-            parallelOptions.CancellationToken = _cancel.Token;
+            parallelOptions.CancellationToken = cancel.Token;
 
             Parallel.ForEach(filesToBackup, parallelOptions, oldFile => BackupFile(subDir, rtext, oldFile, results, lockObj));
         }
@@ -2056,7 +2487,7 @@ public class PhotoCopier
                 DirectoryInfo diNew = new DirectoryInfo(newDir);
                 if (!diNew.Exists)
                 {
-                    if (_isAdmin)
+                    if (isAdmin)
                     {
                         DirectoryInfo diOld = new DirectoryInfo(oldDir);
                         DirectorySecurity srcPermissions = diOld.GetAccessControl();
@@ -2075,7 +2506,7 @@ public class PhotoCopier
                 }
             }
 
-            _outputHandler($"Backing up \"{newFnameInSubDir}\".");
+            outputHandler($"Backing up \"{newFnameInSubDir}\".");
             File.Copy(oldFile, newFile);
         }
         catch (Exception ex)
@@ -2085,7 +2516,7 @@ public class PhotoCopier
         finally
         {
             parent.Increment(ResultCounts.CountKeys.Progress);
-            _statusUpdate();
+            statusUpdate();
         }
     }
 
@@ -2134,6 +2565,321 @@ public class PhotoCopier
         FileInfo fiS = new FileInfo(sourcePath);
 
         return ResolveFileConflict(isRetry, parent, fiS.Length, ref targetPath);
+    }
+
+    public void ReadMBoxFile(Stream stream, bool isRetry, ResultCounts parent, string outputTargetPath)
+    {
+        HashSet<string> labelsToIgnore = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "unread",
+            "important",
+            "opened"
+        };
+
+        string mailRoot = Path.GetDirectoryName(outputTargetPath) ?? string.Empty;
+        int count = 0;
+
+        try
+        {
+            MimeParser parser = new MimeParser(stream, MimeFormat.Mbox);
+
+            foreach (MimeMessage entity in parser)
+            {
+                HashSet<string> mailFolders = null;
+                Header[] headers = entity.Headers.Where(h => h.Field.Equals("x-gmail-labels", StringComparison.OrdinalIgnoreCase)).ToArray();
+                if (headers.Length > 0)
+                {
+                    // skip category labels
+                    string[] labels = headers[0].Value.Trim().Split(',', StringSplitOptions.TrimEntries).Where(l => !l.StartsWith("category", StringComparison.OrdinalIgnoreCase)).ToArray();
+                    mailFolders = labels.Where(l => !labelsToIgnore.Contains(l)).ToHashSet(StringComparer.OrdinalIgnoreCase);
+                }
+
+                string dateString = $"{entity.Date:yyyy}{entity.Date:MM}{entity.Date:dd}T{entity.Date:HH}{entity.Date:mm}{entity.Date:ss}";
+
+                if (mailFolders == null || mailFolders.Count == 0) mailFolders = ["Inbox"];
+
+                ICollection<string> addresses = GetSenders(entity);
+
+                if (mailFolders.Contains("archived"))
+                {
+                    mailFolders.Remove("archived");
+
+                    List<string> folders = mailFolders.ToList();
+                    folders.Insert(0, "Archived");
+
+                    if (folders.Count == 1)
+                    {
+                        folders.Add("Inbox");
+                    }
+
+                    mailFolders.Add(string.Join("/", folders));
+                }
+
+                foreach (string mailFolder in mailFolders)
+                {
+                    if (IsCanceled) return;
+                    string folder = mailFolder.Replace('/', '\\');
+
+                    if (folder.Equals("trash", StringComparison.OrdinalIgnoreCase))
+                    {
+                        // skip trash folder
+                        if (!settings.KeepTrash) continue;
+                    }
+                    else if (folder.Equals("spam", StringComparison.OrdinalIgnoreCase))
+                    {
+                        // skip spam folder
+                        if (!settings.KeepSpam) continue;
+                    }
+                    else if (folder.Equals("sent", StringComparison.OrdinalIgnoreCase))
+                    {
+                        // skip sent folder
+                        if (!settings.KeepSent) continue;
+
+                        addresses = GetRecipients(entity);
+                    }
+                    else if (folder.StartsWith("archived", StringComparison.OrdinalIgnoreCase))
+                    {
+                        // skip archived folder
+                        if (!settings.KeepArchived) continue;
+
+                        archivedMailCount++;
+                    }
+
+                    foreach (string address in addresses)
+                    {
+                        // folder/values-date.eml (e.g. "inbox/johndoe@deere.com-20240101T120000.eml")
+                        string fileName = $"{address}-{dateString}.eml";
+
+                        string targetDir = Path.Combine(mailRoot, folder);
+                        System.IO.Directory.CreateDirectory(targetDir);
+
+                        if (settings.Logging != LoggingVerbosity.Quiet) outputHandler($"{(isRetry ? retryText : "")}mail:\"{folder}\\{fileName}\"");
+                        statusUpdate(StatusCode.Progress, 1, $"(mail:{++count})");
+
+                        string fullName = Path.Combine(targetDir, fileName);
+                        entity.WriteTo(fullName);
+                    }
+                }
+
+                if (IsCanceled) return;
+            }
+        }
+        catch (Exception ex)
+        {
+            HandleExceptions(ex, parent, $"Error reading mbox file");
+            if (Debugger.IsAttached) { Debugger.Break(); }
+        }
+        finally
+        {
+            statusUpdate(StatusCode.Progress);
+        }
+    }
+
+    private ICollection<string> GetRecipients(MimeMessage entity)
+    {
+        HashSet<string> addresses = new HashSet<string>(StringComparer.Ordinal);
+
+        if (replaceChars == null)
+        {
+            replaceChars = new HashSet<char>(Path.GetInvalidFileNameChars());
+        }
+
+        if (entity.Sender != null)
+        {
+            string[] values = entity.GetRecipients(true).Select(r => r.Address).ToArray();
+            foreach (string recipient in values)
+            {
+                if (recipient.Contains('@'))
+                {
+                    addresses.Add(recipient.Trim());
+                }
+            }
+        }
+
+        Header[] headers = entity.Headers.Where(h => h.Field.Equals("to", StringComparison.OrdinalIgnoreCase)).ToArray();
+        if (headers.Length > 0)
+        {
+            string[] values = headers[0].Value.Trim().Split(',', StringSplitOptions.TrimEntries);
+            foreach (string recipient in values)
+            {
+                if (recipient.Contains('@'))
+                {
+                    addresses.Add(recipient.Trim());
+                }
+            }
+        }
+
+        string[] recipients = addresses.ToArray();
+
+        for (int ii = 0; ii < recipients.Length; ii++)
+        {
+            recipients[ii] = NormalizeAddress(recipients[ii]);
+        }
+
+        return recipients;
+    }
+
+    private string NormalizeAddress(string address)
+    {
+        string[] addressParts = address.Split(['>', '<'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+        string addressPart = string.Empty;
+        string namePart = string.Empty;
+
+        foreach (string part in addressParts)
+        {
+            if (part.Contains('@'))
+            {
+                addressPart = part.Trim();
+            }
+            else
+            {
+                namePart = part.Trim();
+            }
+        }
+
+        string domain = string.Empty;
+        int atIndex = addressPart.IndexOf('@');
+        if (atIndex > 0)
+        {
+            string name = addressPart.Substring(0, atIndex).Trim();
+            if (namePart.Length == 0 && name.Length > 0)
+            {
+                namePart = name;
+            }
+
+            string fullDomain = addressPart.Substring(atIndex + 1).Trim();
+            if (fullDomain != null && fullDomain.Length > 0)
+            {
+                string[] parts = fullDomain.Split('.', StringSplitOptions.TrimEntries);
+
+                if (parts.Length > 1)
+                {
+                    // remove the domain part
+                    domain = parts[parts.Length - 2];
+                }
+            }
+        }
+        else
+        {
+            if (Debugger.IsAttached) { Debugger.Break(); }
+        }
+
+        if (namePart.Length > 0)
+        {
+            StringBuilder sbName = new StringBuilder();
+            foreach (char ch in namePart)
+            {
+                if (!char.IsLetterOrDigit(ch)) continue;
+                sbName.Append(ch);
+            }
+
+            namePart = sbName.ToString();
+        }
+
+        return $"{namePart}@{domain}";
+    }
+
+    private HashSet<char> replaceChars = null;
+
+    private ICollection<string> GetSenders(MimeMessage entity)
+    {
+        HashSet<string> addresses = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        if (replaceChars == null)
+        {
+            replaceChars = new HashSet<char>(Path.GetInvalidFileNameChars());
+        }
+
+        if (entity.Sender != null)
+        {
+            string sender = entity.Sender.ToString().Trim();
+            if (sender.Contains('@')) addresses.Add(sender);
+        }
+        
+        if (entity.From.Count > 0)
+        {
+            foreach (InternetAddress address in entity.From)
+            {
+                if (address is MailboxAddress mailboxAddress)
+                {
+                    // use the mailbox address
+                    string sender = mailboxAddress.Address.Trim();
+                    if (!sender.Contains('@')) continue;
+
+                    addresses.Add(mailboxAddress.Address);
+                }
+            }
+        }
+
+        Header[] headers = entity.Headers.Where(h => h.Field.Equals("senders", StringComparison.OrdinalIgnoreCase)).ToArray();
+        foreach (Header header in headers)
+        {
+            string sender = header.Value.Trim();
+            if (!sender.Contains('@')) continue;
+
+            addresses.Add(header.Value.Trim());
+        }
+
+        string[] all = addresses.ToArray();
+        foreach (string sender in all)
+        {
+            if (addresses.Count > 1 && !sender.Contains('<'))
+            {
+                addresses.Remove(sender);
+            }
+        }
+
+        List<string> senders = new List<string>();
+        for (int ii = 0; ii < addresses.Count; ii++)
+        {
+            senders.Add(NormalizeAddress(all[ii]));
+        }
+
+        return senders;
+    }
+
+    public Settings GetSettings(Configs configs)
+    {
+        Settings newSettings = new Settings();
+
+        configs.TryGetString("source", out string sourceDir);
+        configs.TryGetString("destination", out string destinationDir);
+        configs.TryGetString("backup", out string backup);
+        configs.TryGetString("pattern", out string pattern);
+        configs.TryGetString("filter", out string fileFilter);
+        configs.TryGetString("logging", out string loggingString);
+        configs.TryGetString("action", out string actionString);
+        configs.TryGetBool("listonly", out bool listOnly);
+        configs.TryGetBool("parallel", out bool parallel);
+        configs.TryGetString("junk", out string junk);
+        configs.TryGetBool("keeplocked", out bool keepLocked);
+        configs.TryGetBool("keepTrash", out bool keepTrash);
+        configs.TryGetBool("keepSpam", out bool keepSpam);
+        configs.TryGetBool("keepSent", out bool keepSent);
+        configs.TryGetBool("keepArchived", out bool keepArchived);
+        configs.TryGetBool("purgeGmailArchive", out bool purgeArchived);
+
+        if (!Enum.TryParse(actionString, true, out PhotoCopierActions behavior)) behavior = PhotoCopierActions.Copy;
+        if (!Enum.TryParse(loggingString, true, out LoggingVerbosity logging)) logging = LoggingVerbosity.Verbose;
+
+        newSettings.Source = sourceDir;
+        newSettings.Destination = destinationDir;
+        newSettings.Backup = backup;
+        newSettings.Pattern = pattern;
+        newSettings.Filter = fileFilter;
+        newSettings.Logging = logging;
+        newSettings.Behavior = behavior;
+        newSettings.ListOnly = listOnly;
+        newSettings.Parallel = parallel;
+        newSettings.KeepLocked = keepLocked;
+        newSettings.JunkExtensions = junk;
+        newSettings.KeepTrash = keepTrash;
+        newSettings.KeepSpam = keepSpam;
+        newSettings.KeepSent = keepSent;
+        newSettings.KeepArchived = keepArchived;
+
+        return newSettings;
     }
 }
 
@@ -2203,4 +2949,55 @@ public class ResultCounts
             return Values[key];
         }
     }
+}
+
+public enum DataType
+{
+    Unknown,
+    AccessLogActivity,
+    Account,
+    Alerts,
+    ArchiveBrowser,
+    Assignments,
+    Blogger,
+    BusinessProfile,
+    Calendar,
+    Chat,
+    Chrome,
+    Contacts,
+    DeviceConfigurationService,
+    Discover,
+    Drive,
+    Feedback,
+    Finance,
+    Fit,
+    FitBit,
+    Gemini,
+    GooglePay,
+    Groups,
+    HelpCommunities,
+    HomeApp,
+    Keep,
+    Locked,
+    Mail,
+    Maps,
+    MapsYourPlaces,
+    Meet,
+    MyActivity,
+    News,
+    Photos,
+    PlayBooks,
+    PlayMoviesTV,
+    PlayStore,
+    Profile,
+    Recorder,
+    Saved,
+    SearchNotifications,
+    Shopping,
+    Store,
+    Tasks,
+    TimeLine,
+    Voice,
+    WorkspaceMarketplace,
+    YouTube,
 }

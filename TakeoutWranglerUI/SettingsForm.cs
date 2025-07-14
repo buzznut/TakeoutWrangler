@@ -1,4 +1,4 @@
-//  <@$&< copyright begin >&$@> 24FE144C2255E2F7CCB65514965434A807AE8998C9C4D01902A628F980431C98:20241017.A:2025:2:25:8:47
+//  <@$&< copyright begin >&$@> 24FE144C2255E2F7CCB65514965434A807AE8998C9C4D01902A628F980431C98:20241017.A:2025:7:1:14:38
 // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 // Copyright © 2024-2025 Stewart A. Nutter - All Rights Reserved.
 // No warranty is implied or given.
@@ -13,22 +13,21 @@ namespace TakeoutWranglerUI;
 public partial class SettingsForm : Form
 {
     private bool isLoaded;
-    public string Source;
-    public string Destination;
-    public string Backup;
-    public string Filter;
-    public string Pattern;
-    public bool ListOnly;
-    public bool Parallel;
-    public string Junk;
-    public LoggingVerbosity Logging;
-    public PhotoCopierActions Behavior;
+    private bool passwordTextHasChanged;
+
+    public Settings Settings { get; private set; }
+    public string Password
+    {
+        get => textBoxPassword.Text.Trim();
+    }
     public PhotoCopier PhotoCopierSession;
 
-    public SettingsForm()
+    public SettingsForm(Settings settings)
     {
         SuspendLayout();
         InitializeComponent();
+        buttonOkay.Enabled = false;
+        Settings = settings ?? throw new ArgumentNullException(nameof(settings));
 
         foreach (PhotoCopierActions action in Enum.GetValues(typeof(PhotoCopierActions)))
         {
@@ -42,39 +41,58 @@ public partial class SettingsForm : Form
         }
         comboBoxVerbosity.SelectedItem = LoggingVerbosity.Verbose;
 
-        checkBoxList.Checked = ListOnly;
-        checkBoxUseParallel.Checked = Parallel;
+        checkBoxList.Checked = Settings.ListOnly;
+        checkBoxUseParallel.Checked = Settings.Parallel;
+
+        // photos
+        checkBoxKeepLocked.Checked = Settings.KeepLocked;
+
+        // mail
+        checkBoxTrash.Checked = Settings.KeepTrash;
+        checkBoxSpam.Checked = Settings.KeepSpam;
 
         SetActionDescription();
 
         ResumeLayout(true);
+
+        EnableOkayButton();
     }
 
     private void SettingsForm_Load(object sender, EventArgs e)
     {
         SuspendLayout();
 
-        textBoxSource.Text = Source;
-        textBoxDestination.Text = Destination;
-        textBoxFileFilter.Text = Filter;
-        textBoxDestinationPattern.Text = Pattern;
-        textBoxJunkFiles.Text = Junk;
-        textBoxReorderBackupFolder.Text = Backup;
+        textBoxSource.Text = Settings.Source;
+        textBoxDestination.Text = Settings.Destination;
+        textBoxFileFilter.Text = Settings.Filter;
+        textBoxDestinationPattern.Text = Settings.Pattern;
+        textBoxJunkFiles.Text = Settings.JunkExtensions;
+        textBoxReorderBackupFolder.Text = Settings.Backup;
 
-        comboBoxActions.SelectedItem = Behavior;
-        comboBoxActions.SelectedIndex = comboBoxActions.FindStringExact(Behavior.ToString());
+        comboBoxActions.SelectedItem = Settings.Behavior;
+        comboBoxActions.SelectedIndex = comboBoxActions.FindStringExact(Settings.Behavior.ToString());
 
-        comboBoxVerbosity.SelectedItem = Logging;
-        comboBoxVerbosity.SelectedIndex = comboBoxVerbosity.FindStringExact(Logging.ToString());
+        comboBoxVerbosity.SelectedItem = Settings.Logging;
+        comboBoxVerbosity.SelectedIndex = comboBoxVerbosity.FindStringExact(Settings.Logging.ToString());
 
-        checkBoxList.Checked = ListOnly;
-        checkBoxUseParallel.Checked = Parallel;
+        checkBoxList.Checked = Settings.ListOnly;
+        checkBoxUseParallel.Checked = Settings.Parallel;
+
+        // photos
+        checkBoxKeepLocked.Checked = Settings.KeepLocked;
+
+        // mail
+        checkBoxTrash.Checked = Settings.KeepTrash;
+        checkBoxSpam.Checked = Settings.KeepSpam;
+        checkBoxSent.Checked = Settings.KeepSent;
+        checkBoxArchived.Checked = Settings.KeepArchived;
 
         SetActionDescription();
         isLoaded = true;
-        SettingsChanged(Behavior == PhotoCopierActions.Reorder);
+        SettingsChanged(Settings.Behavior == PhotoCopierActions.Reorder);
 
         ResumeLayout(true);
+        EnableOkayButton();
     }
 
     private void buttonOkay_Click(object sender, EventArgs e)
@@ -82,42 +100,60 @@ public partial class SettingsForm : Form
         bool changed = false;
         string reason;
 
-        changed |= string.Compare(Source, textBoxSource.Text) != 0;
-        Source = textBoxSource.Text.Trim();
+        changed |= string.Compare(Settings.Source, textBoxSource.Text) != 0;
+        Settings.Source = textBoxSource.Text.Trim();
 
-        changed |= string.Compare(Filter, textBoxFileFilter.Text) != 0;
-        Filter = textBoxFileFilter.Text.Trim();
+        changed |= string.Compare(Settings.Filter, textBoxFileFilter.Text) != 0;
+        Settings.Filter = textBoxFileFilter.Text.Trim();
 
-        changed |= string.Compare(Destination, textBoxDestination.Text) != 0;
-        Destination = textBoxDestination.Text.Trim();
+        changed |= string.Compare(Settings.Destination, textBoxDestination.Text) != 0;
+        Settings.Destination = textBoxDestination.Text.Trim();
 
-        changed |= string.Compare(Backup, textBoxReorderBackupFolder.Text) != 0;
-        Backup = textBoxReorderBackupFolder.Text.Trim();
+        changed |= string.Compare(Settings.Backup, textBoxReorderBackupFolder.Text) != 0;
+        Settings.Backup = textBoxReorderBackupFolder.Text.Trim();
 
-        changed |= string.Compare(Pattern, textBoxDestinationPattern.Text) != 0;
-        Pattern = textBoxDestinationPattern.Text;
+        changed |= string.Compare(Settings.Pattern, textBoxDestinationPattern.Text) != 0;
+        Settings.Pattern = textBoxDestinationPattern.Text;
 
         PhotoCopierActions behavior = (comboBoxActions.SelectedItem as PhotoCopierActions?).GetValueOrDefault(PhotoCopierActions.Copy);
-        changed |= Behavior != behavior;
-        Behavior = behavior;
+        changed |= Settings.Behavior != behavior;
+        Settings.Behavior = behavior;
 
         LoggingVerbosity logging = (comboBoxVerbosity.SelectedItem as LoggingVerbosity?).GetValueOrDefault(LoggingVerbosity.Verbose);
-        changed |= Logging != logging;
-        Logging = logging;
+        changed |= Settings.Logging != logging;
+        Settings.Logging = logging;
 
-        changed |= ListOnly != checkBoxList.Checked;
-        ListOnly = checkBoxList.Checked;
+        changed |= Settings.ListOnly != checkBoxList.Checked;
+        Settings.ListOnly = checkBoxList.Checked;
 
-        changed |= Parallel != checkBoxUseParallel.Checked;
-        Parallel = checkBoxUseParallel.Checked;
+        changed |= Settings.Parallel != checkBoxUseParallel.Checked;
+        Settings.Parallel = checkBoxUseParallel.Checked;
 
-        changed |= string.Compare(Junk, textBoxJunkFiles.Text) != 0;
-        Junk = textBoxJunkFiles.Text.Trim();
+        changed |= Settings.KeepLocked != checkBoxKeepLocked.Checked;
+        Settings.KeepLocked = checkBoxKeepLocked.Checked;
+
+        changed |= string.Compare(Settings.JunkExtensions, textBoxJunkFiles.Text) != 0;
+        Settings.JunkExtensions = textBoxJunkFiles.Text.Trim();
+
+        changed |= passwordTextHasChanged;
+        passwordTextHasChanged = false;
+
+        changed |= Settings.KeepTrash != checkBoxTrash.Checked;
+        Settings.KeepTrash = checkBoxTrash.Checked;
+
+        changed |= Settings.KeepSpam != checkBoxSpam.Checked;
+        Settings.KeepSpam = checkBoxSpam.Checked;
+
+        changed |= Settings.KeepSent != checkBoxSent.Checked;
+        Settings.KeepSent = checkBoxSent.Checked;
+
+        changed |= Settings.KeepArchived != checkBoxArchived.Checked;
+        Settings.KeepArchived = checkBoxArchived.Checked;
 
         if (changed)
         {
             PhotoCopier copier = new PhotoCopier(null, null);
-            if (Behavior != PhotoCopierActions.Reorder && !copier.ValidateSource(textBoxSource.Text, Filter, behavior, null, out reason))
+            if (Settings.Behavior != PhotoCopierActions.Reorder && !copier.ValidateSource(textBoxSource.Text, Settings.Filter, behavior, null, out reason))
             {
                 DialogResult validateResult = MessageBox.Show($"{reason}. Continue?", "Validate Source", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
                 if (validateResult == DialogResult.No)
@@ -148,12 +184,22 @@ public partial class SettingsForm : Form
                 return;
             }
 
-            bool inPlace = Source.Equals(Destination, StringComparison.OrdinalIgnoreCase);
+            bool inPlace = Settings.Source.Equals(Settings.Destination, StringComparison.OrdinalIgnoreCase);
             if (inPlace && !copier.ValidateReorderBackupDirectory(textBoxReorderBackupFolder.Text, null, out reason))
             {
                 MessageBox.Show(reason, "Validate Reorder backup folder", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 DialogResult = DialogResult.None;
                 return;
+            }
+
+            if (Settings.KeepLocked)
+            {
+                if (textBoxPassword.Text != textBoxConfirm.Text || textBoxPassword.Text.Length < 6)
+                {
+                    MessageBox.Show(reason, "Password does not match or is too short", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    DialogResult = DialogResult.None;
+                    return;
+                }
             }
 
             if (changed)
@@ -162,6 +208,12 @@ public partial class SettingsForm : Form
                 if (result == DialogResult.Yes)
                 {
                     DialogResult = DialogResult.Yes;
+
+                    if (!Settings.KeepLocked)
+                    {
+                        textBoxPassword.Clear();
+                        textBoxConfirm.Clear();
+                    }
                 }
             }
         }
@@ -207,7 +259,7 @@ public partial class SettingsForm : Form
     {
         StringBuilder sb = new StringBuilder();
 
-        if (ListOnly) sb.Append("(List only - no changes) ");
+        if (Settings.ListOnly) sb.Append("(List only - no changes) ");
 
         switch (((PhotoCopierActions?)comboBoxActions.SelectedItem).GetValueOrDefault(PhotoCopierActions.Copy))
         {
@@ -251,6 +303,12 @@ public partial class SettingsForm : Form
         textBoxReorderBackupFolder.Enabled = inPlace;
         buttonReorderBackupBrowse.Enabled = inPlace;
 
+        textBoxPassword.Enabled = checkBoxKeepLocked.Checked;
+        textBoxConfirm.Enabled = checkBoxKeepLocked.Checked;
+        labelPassword.Enabled = checkBoxKeepLocked.Checked;
+        labelConfirm.Enabled = checkBoxKeepLocked.Checked;
+        labelLast.Enabled = checkBoxKeepLocked.Checked;
+
         SetActionDescription();
     }
 
@@ -265,6 +323,66 @@ public partial class SettingsForm : Form
 
     private void textBox_TextChanged(object sender, EventArgs e)
     {
-        SettingsChanged(Behavior == PhotoCopierActions.Reorder);
+        SettingsChanged(Settings.Behavior == PhotoCopierActions.Reorder);
     }
+
+    private void password_TextChanged(object sender, EventArgs e)
+    {
+        EnableOkayButton();
+        passwordTextHasChanged = true;
+    }
+
+    private void checkBoxKeepLocked_CheckedChanged(object sender, EventArgs e)
+    {
+        if (isLoaded)
+        {
+            SettingsChanged(Settings.Behavior == PhotoCopierActions.Reorder);
+            EnableOkayButton();
+        }
+    }
+
+    private void EnableOkayButton()
+    {
+        if (isLoaded)
+        {
+            buttonOkay.Enabled = !string.IsNullOrWhiteSpace(textBoxSource.Text) &&
+                                 !string.IsNullOrWhiteSpace(textBoxDestination.Text) &&
+                                 !string.IsNullOrWhiteSpace(textBoxFileFilter.Text) &&
+                                 !string.IsNullOrWhiteSpace(textBoxDestinationPattern.Text) &&
+                                 (!checkBoxKeepLocked.Checked || (!string.IsNullOrWhiteSpace(textBoxPassword.Text) && textBoxPassword.Text == textBoxConfirm.Text && textBoxPassword.Text.Length >= 8));
+        }
+    }
+
+    private void buttonShowPassword_MouseDown(object sender, MouseEventArgs e)
+    {
+        ButtonShow(textBoxPassword, true);
+    }
+
+    private void buttonShowPassword_MouseUp(object sender, MouseEventArgs e)
+    {
+        ButtonShow(textBoxPassword, false);
+    }
+
+    private void buttonShowConfirm_MouseDown(object sender, MouseEventArgs e)
+    {
+        ButtonShow(textBoxConfirm, true);
+    }
+
+    private void buttonShowConfirm_MouseUp(object sender, MouseEventArgs e)
+    {
+        ButtonShow(textBoxConfirm, false);
+    }
+
+    private void ButtonShow(TextBox textBox, bool showPassword)
+    {
+        if (showPassword && textBox.UseSystemPasswordChar)
+        {
+            textBox.UseSystemPasswordChar = false;
+        }
+        else
+        {
+            textBox.UseSystemPasswordChar = true;
+        }
+    }
+
 }

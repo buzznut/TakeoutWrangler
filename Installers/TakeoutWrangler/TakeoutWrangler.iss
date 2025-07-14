@@ -6,6 +6,12 @@
 #define MyAppExeName MyAppName + ".exe"
 #define MySourceDir "C:\Users\sanut\OneDrive\GitCode\PhotoCopy\TakeoutWranglerUI\bin\Release\net9.0-windows8.0\"
 #define MySourceExe MySourceDir + "\" + MyAppExeName
+
+#define MyDecryptAppName "TakeoutWranglerUnlock"
+#define MyDecryptAppExeName MyDecryptAppName + ".exe"
+#define MyDecryptSourceDir "C:\Users\sanut\OneDrive\GitCode\PhotoCopy\DecryptDisplay\bin\Release\net9.0-windows\"
+#define MyDecryptSourceExe MyDecryptSourceDir + "\" + MyDecryptAppExeName
+
 #define MyAppVersion GetVersionNumbersString(MySourceExe)	
 #define MyIcon "C:\Users\sanut\OneDrive\GitCode\PhotoCopy\Documentation\photos.ico"
 
@@ -17,46 +23,63 @@
 [Setup]
 ; NOTE: The value of AppId uniquely identifies this application. Do not use the same AppId value in installers for other applications.
 ; (To generate a new GUID, click Tools | Generate GUID inside the IDE.)
+AlwaysShowComponentsList=yes
 AppId={{F5A13A0A-4DB0-4A8D-8056-C5A952CD8110}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
-VersionInfoVersion={#MyAppVersion}
 AppPublisher={#MyAppPublisher}
-DefaultDirName={autopf}\{#MyAppPublisher}\{#MyAppName}
-ChangesAssociations=yes
-DefaultGroupName={#MyAppName}
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
+ChangesAssociations=yes
+Compression=lzma2/ultra64
+DefaultGroupName={#MyAppName}
+DefaultDirName={autopf}\{#MyAppPublisher}\{#MyAppName}
 DisableProgramGroupPage=yes
 LicenseFile=C:\Users\sanut\OneDrive\GitCode\PhotoCopy\Documentation\Copyright.txt
 PrivilegesRequired=admin
 PrivilegesRequiredOverridesAllowed=dialog
 OutputBaseFilename={#MyAppName}Setup
 SetupIconFile={#MyIcon}
-UninstallDisplayIcon={#MyIcon}
-Compression=lzma2/ultra64
 SolidCompression=yes
+UninstallDisplayIcon={#MyIcon}
+VersionInfoVersion={#MyAppVersion}
 WizardStyle=modern
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Tasks]
-Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
+Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked; Components: TakeoutWrangler DecryptDisplay
+Name: twlockAssociation; Description: "{cm:AssocFileExtension,{#MyDecryptAppName},twlock}"; GroupDescription: File extensions:
+
+[Types]
+Name: "full"; Description: "Install TakeoutWrangler and DecryptDisplay"
+Name: "onlyTakeoutWrangler"; Description: "Install Only TakeoutWrangler"
+Name: "onlyDecryptDisplay"; Description: "Install Only DecryptDisplay"
+
+[Components]
+Name: "TakeoutWrangler"; Description: "TakeoutWrangler UI  only"; Types: onlyTakeoutWrangler full
+Name: "DecryptDisplay"; Description: "DecryptDisplay for Locked folder"; Types: onlyDecryptDisplay full
 
 [Files]
-Source: "{#MySourceDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs; Excludes: "*.wl,*.development.json,*.pdb,appsettings.json,launchSettings.json"
+Source: "{#MySourceDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs; Excludes: "*.wl,*.development.json,*.pdb,appsettings.json,launchSettings.json"; Components: TakeoutWrangler
+Source: "{#MyDecryptSourceDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs; Excludes: "*.wl,*.development.json,*.pdb,appsettings.json,launchSettings.json"; Components: DecryptDisplay
 ; NOTE: Don't use "Flags: ignoreversion" on any shared system files
 
 [Icons]
 Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
 Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
 
+[Registry]
+Root: HKCR; Subkey: ".twlock"; ValueData: "{#MyDecryptAppName}"; Flags: uninsdeletevalue; ValueType: string;  ValueName: ""
+Root: HKCR; Subkey: "{#MyDecryptAppName}"; ValueData: "Program {#MyDecryptAppName}";  Flags: uninsdeletekey;   ValueType: string;  ValueName: ""
+Root: HKCR; Subkey: "{#MyDecryptAppName}\DefaultIcon"; ValueData: "{app}\{#MyDecryptAppName},0"; ValueType: string;  ValueName: ""
+Root: HKCR; Subkey: "{#MyDecryptAppName}\shell\open\command"; ValueData: """{app}\{#MyDecryptAppName}"" ""%1""";  ValueType: string;  ValueName: ""
+
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent runascurrentuser
 
 [Code]
-
 function PrepareToInstall(var NeedsRestart: Boolean): String;
 begin
   Log('app: ' + ExpandConstant('{app}'));

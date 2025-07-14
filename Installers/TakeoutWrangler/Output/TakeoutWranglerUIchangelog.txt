@@ -1,3 +1,16 @@
+1.0.287.1081 - 2025/07/14 01:02:17
+    1) Minor bug fixes, performance improvements, or setup changes.
+
+1.0.287.1075 - 2025/07/14 12:56:06
+    1) Handle all takeout files. Encrypt 'Locked' photos. Added TakeoutWranglerUnlock to display 'locked' photos with a password. Added support for email. Bug fixes and performance improvements.
+
+1.0.287.908 - 2025/07/14 10:09:17
+    1) Minor bug fixes, performance improvements, or setup changes.
+
+1.0.285.1369 - 2025/07/12 05:49:31
+    1) Performance improvements. Bug fixes.
+    2) Update NuGet packages. Fixed problem with 'Reorder' changing some files in the source.
+
 1.0.152.1199 - 2025/03/01 01:59:47
     1) Performance and bug fixes.
 

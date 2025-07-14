@@ -1,4 +1,4 @@
-//  <@$&< copyright begin >&$@> 24FE144C2255E2F7CCB65514965434A807AE8998C9C4D01902A628F980431C98:20241017.A:2025:2:25:8:47
+//  <@$&< copyright begin >&$@> 24FE144C2255E2F7CCB65514965434A807AE8998C9C4D01902A628F980431C98:20241017.A:2025:7:1:14:38
 // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 // Copyright © 2024-2025 Stewart A. Nutter - All Rights Reserved.
 // No warranty is implied or given.
@@ -108,7 +108,7 @@ public class HelperTests
         sb.AppendLine("}");
 
         File.WriteAllText(appSettings, sb.ToString());
-        configs.LoadAppSettings();
+        configs.LoadAppSettings(appSettings);
 
         Assert.IsTrue(configs.TryGetString("source", out string sourceDir));
         Assert.IsTrue(configs.TryGetString("destination", out string destinationDir));
@@ -120,7 +120,7 @@ public class HelperTests
         Assert.AreEqual("takeout-*.zip", filter);
         Assert.IsTrue(configs.TryGetBool("help", out bool help));
         Assert.AreEqual(help, false);
-        Assert.IsTrue(configs.TryGetString("doesNotExist", out string test));
+        Assert.IsFalse(configs.TryGetString("doesNotExist", out string test));
     }
 
     [TestMethod]
@@ -193,7 +193,7 @@ public class HelperTests
         sb.AppendLine("}");
 
         File.WriteAllText(appSettings, sb.ToString());
-        configs.LoadAppSettings();
+        configs.LoadAppSettings(appSettings);
         configs.ParseArgs(["-filter=takeout-*.7z"]);
 
         Assert.IsTrue(configs.TryGetString("filter", out string filter));
@@ -239,7 +239,7 @@ public class HelperTests
 
         File.WriteAllText(appSettings, sb.ToString());
         configs.ParseArgs(["-filter=takeout-*.7z"]);
-        configs.LoadAppSettings();
+        configs.LoadAppSettings(appSettings);
 
         Assert.IsTrue(configs.TryGetString("filter", out string filter));
         Assert.AreEqual("takeout-*.zip", filter);

@@ -1,4 +1,4 @@
-//  <@$&< copyright begin >&$@> 24FE144C2255E2F7CCB65514965434A807AE8998C9C4D01902A628F980431C98:20241017.A:2025:2:25:8:47
+//  <@$&< copyright begin >&$@> 24FE144C2255E2F7CCB65514965434A807AE8998C9C4D01902A628F980431C98:20241017.A:2025:7:1:14:38
 // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 // Copyright © 2024-2025 Stewart A. Nutter - All Rights Reserved.
 // No warranty is implied or given.
@@ -60,10 +60,24 @@ public class Configs
         }
     }
 
-    public AppSettingsJson LoadAppSettings(string keyRoot = "Data:Settings")
+    public AppSettingsJson LoadAppSettings(string useSettingsFile = null, string keyRoot = "Data:Settings")
     {
-        string localAppDataPath = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-        string settingsFile = Path.Combine(localAppDataPath, "Programs", "Stewart A. Nutter", "TakeoutWrangler", "config.json");
+        string settingsFile = null;
+
+        if (!string.IsNullOrEmpty(useSettingsFile))
+        {
+            if (!File.Exists(useSettingsFile))
+            {
+                throw new DirectoryNotFoundException($"Settings file does not exist: {useSettingsFile}");
+            }
+
+            settingsFile = useSettingsFile;
+        }
+        else
+        {
+            string localAppDataPath = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+            settingsFile = Path.Combine(localAppDataPath, "Programs", "Stewart A. Nutter", "TakeoutWrangler", "config.json");
+        }
 
         string appPath = AppHelpers.GetApplicationDir();
         if (string.IsNullOrEmpty(appPath)) throw new ApplicationException("Could not get application directory");

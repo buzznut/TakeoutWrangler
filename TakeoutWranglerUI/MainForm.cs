@@ -1,4 +1,4 @@
-//  <@$&< copyright begin >&$@> 24FE144C2255E2F7CCB65514965434A807AE8998C9C4D01902A628F980431C98:20241017.A:2025:2:25:8:47
+//  <@$&< copyright begin >&$@> 24FE144C2255E2F7CCB65514965434A807AE8998C9C4D01902A628F980431C98:20241017.A:2025:7:1:14:38
 // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 // Copyright © 2024-2025 Stewart A. Nutter - All Rights Reserved.
 // No warranty is implied or given.
@@ -6,6 +6,7 @@
 // <@$&< copyright end >&$@>
 
 using AutoUpdaterDotNET;
+using CommonLibrary;
 using PhotoCopyLibrary;
 using Spire.Pdf;
 using System.ComponentModel;
@@ -26,7 +27,7 @@ public partial class MainForm : Form
 
     private PhotoCopier copier;
     private readonly string[] args;
-    private AppSettingsJson settings;
+    private AppSettingsJson appSettings;
     private Configs configs;
     private static uint viewMessage;
     private static uint viewWarning;
@@ -50,6 +51,7 @@ public partial class MainForm : Form
     private readonly string updateUrl = TWContstants.UpdateUrl;
     private static int totalItems;
     private static int progress;
+    private Settings settings;
 
     private MainForm()
     {
@@ -228,36 +230,25 @@ public partial class MainForm : Form
 
         try
         {
-            settings = configs.LoadAppSettings();
+            appSettings = configs.LoadAppSettings();
             configs.ParseArgs(args);
 
-            configs.TryGetString("source", out string sourceDir);
-            configs.TryGetString("destination", out string destinationDir);
-            configs.TryGetString("backup", out string backup);
-            configs.TryGetString("pattern", out string pattern);
-            configs.TryGetString("filter", out string fileFilter);
-            configs.TryGetString("logging", out string loggingString);
-            configs.TryGetString("action", out string actionString);
-            configs.TryGetBool("listonly", out bool listOnly);
-            configs.TryGetBool("parallel", out bool parallel);
-            configs.TryGetString("junk", out string junk);
+            if (settings == null)
+            {
+                settings = photoCopier.GetSettings(configs);
+            }
 
-            if (!Enum.TryParse(actionString, true, out PhotoCopierActions behavior)) behavior = PhotoCopierActions.Copy;
-            if (!Enum.TryParse(loggingString, true, out LoggingVerbosity logging)) logging = LoggingVerbosity.Verbose;
+            configs.TryGetString("password", out string password);
+            if (password != null && password.Length < 6)
+            {
+                password = null;
+            }
 
             ReturnCode result = photoCopier.Initialize(
-                nameof(TakeoutWranglerUI), 
-                false, 
-                sourceDir, 
-                destinationDir, 
-                backup, 
-                behavior, 
-                pattern, 
-                fileFilter, 
-                logging, 
-                listOnly, 
-                parallel,
-                junk);
+                nameof(TakeoutWranglerUI),
+                false,
+                settings,
+                password);
 
             if (result != ReturnCode.Success)
             {
@@ -376,32 +367,19 @@ public partial class MainForm : Form
         bool runEnabled = buttonRun.Enabled;
         buttonRun.Enabled = false;
 
-        configs.TryGetString("action", out string actionString);
-        configs.TryGetString("source", out string source);
-        configs.TryGetString("destination", out string destination);
-        configs.TryGetString("backup", out string backup);
-        configs.TryGetString("pattern", out string pattern);
-        configs.TryGetString("filter", out string fileFilter);
-        configs.TryGetString("logging", out string loggingString);
-        configs.TryGetBool("listonly", out bool listOnly);
-        configs.TryGetBool("parallel", out bool parallel);
-        configs.TryGetString("junk", out string junk);
-
-        if (!Enum.TryParse(actionString, true, out PhotoCopierActions behavior)) behavior = PhotoCopierActions.Copy;
-        if (!Enum.TryParse(loggingString, true, out LoggingVerbosity logging)) logging = LoggingVerbosity.Verbose;
-
-        SettingsForm settingsForm = new SettingsForm
+        if (settings == null)
         {
-            Behavior = behavior,
-            Source = source,
-            Destination = destination,
-            Backup = backup,
-            Pattern = pattern,
-            Filter = fileFilter,
-            Logging = logging,
-            ListOnly = listOnly,
-            Parallel = parallel,
-            Junk = junk,
+            settings = copier.GetSettings(configs);
+        }
+
+        configs.TryGetString("password", out string password);
+        if (password != null && password.Length < 6)
+        {
+            password = null;
+        }
+
+        SettingsForm settingsForm = new SettingsForm(settings)
+        {
             PhotoCopierSession = copier
         };
 
@@ -414,49 +392,38 @@ public partial class MainForm : Form
 
         if (result != DialogResult.Cancel)
         {
-            behavior = settingsForm.Behavior;
-            source = settingsForm.Source;
-            destination = settingsForm.Destination;
-            backup = settingsForm.Backup;
-            pattern = settingsForm.Pattern;
-            fileFilter = settingsForm.Filter;
-            logging = settingsForm.Logging;
-            listOnly = settingsForm.ListOnly;
-            parallel = settingsForm.Parallel;
-            junk = settingsForm.Junk;
+            settings = settingsForm.Settings;
+            password = settingsForm.Password;
 
             listBoxView.Rows.Clear();
             PhotoCopier photoCopier = new PhotoCopier(OutputHandler, StatusHandler);
 
-            configs.SetString("action", behavior.ToString());
-            configs.SetString("source", source);
-            configs.SetString("destination", destination);
-            configs.SetString("backup", backup);
-            configs.SetString("pattern", pattern);
-            configs.SetString("logging", logging.ToString());
-            configs.SetString("filter", fileFilter);
-            configs.SetBool("listonly", listOnly);
-            configs.SetBool("parallel", parallel);
-            configs.SetString("junk", junk);
+            configs.SetString("action", settings.Behavior.ToString());
+            configs.SetString("source", settings.Source);
+            configs.SetString("destination", settings.Destination);
+            configs.SetString("backup", settings.Backup);
+            configs.SetString("pattern", settings.Pattern);
+            configs.SetString("logging", settings.Logging.ToString());
+            configs.SetString("filter", settings.Filter);
+            configs.SetBool("listonly", settings.ListOnly);
+            configs.SetBool("parallel", settings.Parallel);
+            configs.SetBool("keeplocked", settings.KeepLocked);
+            configs.SetString("junk", settings.JunkExtensions);
+            configs.SetBool("keepSpam", settings.KeepSpam);
+            configs.SetBool("keepTrash", settings.KeepTrash);
+            configs.SetBool("keepSent", settings.KeepSent);
+            configs.SetBool("keepArchived", settings.KeepArchived);
 
             if (result == DialogResult.Yes)
             {
-                configs.SaveSettings(settings);
+                configs.SaveSettings(appSettings);
             }
 
             ReturnCode okay = photoCopier.Initialize(
-                nameof(TakeoutWranglerUI), 
-                false, 
-                source, 
-                destination, 
-                backup, 
-                behavior, 
-                pattern, 
-                fileFilter, 
-                logging, 
-                listOnly, 
-                parallel,
-                junk);
+                nameof(TakeoutWranglerUI),
+                false,
+                settings,
+                password);
 
             if (okay == ReturnCode.Success)
             {
@@ -526,10 +493,10 @@ public partial class MainForm : Form
                     if (string.IsNullOrEmpty(backup) && destination.Equals(source, StringComparison.OrdinalIgnoreCase))
                     {
                         DialogResult result = MessageBox.Show(
-                            this, 
+                            this,
                             "The Backup folder name is not specified!",
-                            "Continue? Are you sure?", 
-                            MessageBoxButtons.YesNoCancel, 
+                            "Continue? Are you sure?",
+                            MessageBoxButtons.YesNoCancel,
                             MessageBoxIcon.Question);
 
                         if (result != DialogResult.Yes)
@@ -540,10 +507,10 @@ public partial class MainForm : Form
                     else if (!PhotoCopier.IsRunningAsAdministrator())
                     {
                         DialogResult result = MessageBox.Show(
-                            this, 
+                            this,
                             "Application is not running with admin rights!",
-                            " Continue? Are you sure?", 
-                            MessageBoxButtons.YesNoCancel, 
+                            " Continue? Are you sure?",
+                            MessageBoxButtons.YesNoCancel,
                             MessageBoxIcon.Question);
 
                         if (result != DialogResult.Yes)
@@ -696,9 +663,7 @@ public partial class MainForm : Form
                 break;
 
             default:
-#if DEBUG
                 if (Debugger.IsAttached) Debugger.Break();
-#endif
                 MessageBox.Show(args.Error.Message,
                     args.Error.GetType().ToString(), MessageBoxButtons.OK,
                     MessageBoxIcon.Error);
@@ -874,16 +839,6 @@ public partial class MainForm : Form
     private void checkForUpdatesToolStripMenuItem_Click(object sender, EventArgs e)
     {
         if (!string.IsNullOrEmpty(updateUrl)) AutoUpdater.Start(updateUrl);
-    }
-
-    private void toolStripMenuItem1_Click(object sender, EventArgs e)
-    {
-        PrintConsole(true);
-    }
-
-    private void printPreviewDialog_Click(object sender, EventArgs e)
-    {
-
     }
 }
 

@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "DecryptDisplay": {
+      "commandName": "Project",
+      "commandLineArgs": "\"D:\\Test\\NewFiles\\Locked\\2024_11\\picture.twlock\""
+    }
+  }
+}
