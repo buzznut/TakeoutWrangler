@@ -43,3 +43,5 @@
 -git(50cb892ea7618ffad6ebafc360e172cbe07f0ba2)=Performance improvements. Bug fixes.
 -git(8bf6584cddea9f90457b69fa769e96a5d6efca11)=Update NuGet packages. Fixed problem with 'Reorder' changing some files in the source.
 -all=Handle all takeout files. Encrypt 'Locked' photos. Added TakeoutWranglerUnlock to display 'locked' photos with a password. Added support for email. Bug fixes and performance improvements.
+-all=Changed DecryptDisplay to TakeoutWranglerUnlock.
+-git(d9b602b4a5984ff51780c58b29d54798b8088d46)=Handle all takeout files. Encrypt 'Locked' photos. Added TakeoutWranglerUnlock to display 'locked' photos with a password. Added support for email. Bug fixes and performance improvements.

@@ -53,9 +53,9 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 Name: twlockAssociation; Description: "{cm:AssocFileExtension,{#MyDecryptAppName},twlock}"; GroupDescription: File extensions:
 
 [Types]
-Name: "full"; Description: "Install TakeoutWrangler and DecryptDisplay"
-Name: "onlyTakeoutWrangler"; Description: "Install Only TakeoutWrangler"
-Name: "onlyDecryptDisplay"; Description: "Install Only DecryptDisplay"
+Name: "full"; Description: "Install TakeoutWranglerUI and TakeoutWranglerUnlock"
+Name: "onlyTakeoutWrangler"; Description: "Install Only TakeoutWranglerUI"
+Name: "onlyDecryptDisplay"; Description: "Install Only TakeoutWranglerUnlock"
 
 [Components]
 Name: "TakeoutWrangler"; Description: "TakeoutWrangler UI  only"; Types: onlyTakeoutWrangler full

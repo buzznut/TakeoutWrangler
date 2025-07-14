@@ -1,3 +1,7 @@
+1.0.287.1094 - 2025/07/14 01:15:08
+    1) Changed DecryptDisplay to TakeoutWranglerUnlock.
+    2) Handle all takeout files. Encrypt 'Locked' photos. Added TakeoutWranglerUnlock to display 'locked' photos with a password. Added support for email. Bug fixes and performance improvements.
+
 1.0.287.1081 - 2025/07/14 01:02:17
     1) Minor bug fixes, performance improvements, or setup changes.
 
