@@ -251,7 +251,6 @@ public class Configs
 
         if (pType == null)
         {
-            if (throwIfNotDefined) throw new KeyNotFoundException($"Invalid key:{key}");
             value = false;
             return false;
         }
@@ -306,7 +305,6 @@ public class Configs
 
         if (pType == null)
         {
-            if (throwIfNotDefined) throw new KeyNotFoundException($"Invalid key:{key}");
             value = 0;
             return false;
         }
@@ -350,7 +348,6 @@ public class Configs
 
         if (pType == null)
         {
-            if (throwIfNotDefined) throw new KeyNotFoundException($"Invalid key:{key}");
             value = null;
             return false;
         }
