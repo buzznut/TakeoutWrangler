@@ -64,4 +64,75 @@ public static class Extensions
         stream.ReadExactly(bytes, 0, bytes.Length);
         return BitConverter.ToInt16(bytes, 0);
     }
+
+    public static bool CompareStream(this Stream sourceStream, Stream targetStream)
+    {
+        if (sourceStream == null || targetStream == null)
+        {
+            throw new ArgumentNullException("Source or target stream cannot be null.");
+        }
+
+        if (sourceStream == targetStream)
+        {
+            return true; // Both streams are the same instance
+        }
+
+        if (sourceStream.Length != targetStream.Length)
+        {
+            return false; // Different lengths, cannot be equal
+        }
+
+        if (!sourceStream.CanRead || !targetStream.CanRead)
+        {
+            throw new InvalidOperationException("Both streams must be readable.");
+        }
+
+        if (!sourceStream.CanSeek || !targetStream.CanSeek)
+        {
+            throw new InvalidOperationException("Both streams must support seeking.");
+        }
+
+        sourceStream.Position = 0;
+        targetStream.Position = 0;
+
+        byte[] sourceBuffer = new byte[8192];
+        byte[] targetBuffer = new byte[8192];
+
+        while (true)
+        {
+            int bytesReadSource = sourceStream.Read(sourceBuffer, 0, sourceBuffer.Length);
+            int bytesReadTarget = targetStream.Read(targetBuffer, 0, targetBuffer.Length);
+
+            if (bytesReadSource != bytesReadTarget)
+            {
+                return false; // Different number of bytes read
+            }
+
+            if (bytesReadSource == 0) // End of both streams
+            {
+                break;
+            }
+
+            for (int i = 0; i < bytesReadSource; i++)
+            {
+                if (sourceBuffer[i] != sourceBuffer[i])
+                {
+                    return false; // Bytes differ
+                }
+            }
+        }
+
+        return true; // All bytes are equal
+    }
+
+
+
+
+
+
+
+
+
+
+
 }

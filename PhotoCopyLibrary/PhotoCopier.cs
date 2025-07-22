@@ -57,7 +57,6 @@ public class PhotoCopier
     private readonly StatusUpdate statusUpdate = DummyStatus;
     private readonly ConcurrentBag<ZipArchive> archives = new ConcurrentBag<ZipArchive>();
     private readonly ConcurrentDictionary<string, DateTime> originalFileNameToDate = new ConcurrentDictionary<string, DateTime>(StringComparer.OrdinalIgnoreCase);
-    private int archivedMailCount = 0;
 
     readonly List<ConfigParam> _paramTypes = new List<ConfigParam>
     {
@@ -77,7 +76,12 @@ public class PhotoCopier
         new ConfigParam { Name = "keeptrash", Default = false, PType = ParamType.Bool },
         new ConfigParam { Name = "keepspam", Default = false, PType = ParamType.Bool },
         new ConfigParam { Name = "keepsent", Default = false, PType = ParamType.Bool },
-        new ConfigParam { Name = "keeparchived", Default = false, PType = ParamType.Bool }
+        new ConfigParam { Name = "keeparchived", Default = false, PType = ParamType.Bool },
+        new ConfigParam { Name = "keepinbox", Default = true, PType = ParamType.Bool },
+        new ConfigParam { Name = "keepother", Default = true, PType = ParamType.Bool },
+        new ConfigParam { Name = "domail", Default = true, PType = ParamType.Bool },
+        new ConfigParam { Name = "domedia", Default = true, PType = ParamType.Bool },
+        new ConfigParam { Name = "doother", Default = true, PType = ParamType.Bool }
     };
 
     private static void DummyOutput(string output, MessageCode messageCode = MessageCode.Success)
@@ -179,10 +183,25 @@ public class PhotoCopier
                 outputHandler($"                    example: settings.KeepSpam)=true will keep mail spam folder content.");
                 outputHandler();
                 outputHandler($" keepSent=value     value is true to keep mail sent folder content.");
-                outputHandler($"                    example: keepent=true will keep mail sent folder content.");
+                outputHandler($"                    example: keepSent=true will keep mail sent folder content.");
                 outputHandler();
                 outputHandler($" keepArchived=value value is true to keep mail archive folder content.");
-                outputHandler($"                    example: keepent=true will keep mail archive folder content.");
+                outputHandler($"                    example: keepArchived=true will keep mail archive folder content.");
+                outputHandler();
+                outputHandler($" keepInbox=value    value is true to keep mail inbox folder content.");
+                outputHandler($"                    example: keepInbox=true will keep mail inbox folder content.");
+                outputHandler();
+                outputHandler($" keepOther=value    value is true to keep mail other folder content.");
+                outputHandler($"                    example: keepOther=true will keep other mail folder content.");
+                outputHandler();
+                outputHandler($" doMail=value       value is true to process mail content.");
+                outputHandler($"                    example: doMail=true will keep mail specified email content.");
+                outputHandler();
+                outputHandler($" doMedia=value      value is true to process media content.");
+                outputHandler($"                    example: doMedia=true will keep media content.");
+                outputHandler();
+                outputHandler($" doOther=value      value is true to process non-mail and non-photo content.");
+                outputHandler($"                    example: doOther=true will keep non-mail and non-media content.");
                 outputHandler();
 
                 if (reasons.Count > 0)
@@ -222,13 +241,31 @@ public class PhotoCopier
             outputHandler($" Logging: {this.settings.Logging}");
             outputHandler($" ListOnly: {this.settings.ListOnly}");
             outputHandler($" Parallel: {this.settings.Parallel}");
-            outputHandler($" KeepLocked: {this.settings.KeepLocked}");
-            outputHandler($" Password: {(string.IsNullOrEmpty(password) ? "Not set" : "Set (hidden)")}");
-            outputHandler($" KeepTrash: {this.settings.KeepTrash}");
-            outputHandler($" KeepSpam: {this.settings.KeepSpam}");
-            outputHandler($" KeepSent: {this.settings.KeepSent}");
-            outputHandler($" KeepArchived: {this.settings.KeepArchived}");
             outputHandler();
+            outputHandler($"Control:");
+            outputHandler();
+            outputHandler($" DoMail: {this.settings.DoMail}");
+            if (settings.DoMail)
+            {
+                outputHandler($"  KeepInbox: {this.settings.KeepInbox}");
+                outputHandler($"  KeepTrash: {this.settings.KeepTrash}");
+                outputHandler($"  KeepSpam: {this.settings.KeepSpam}");
+                outputHandler($"  KeepSent: {this.settings.KeepSent}");
+                outputHandler($"  KeepArchived: {this.settings.KeepArchived}");
+                outputHandler($"  KeepOther: {this.settings.KeepOther}");
+                outputHandler();
+            }
+            outputHandler($" DoMedia: {this.settings.DoMedia}");
+            if (settings.DoMedia)
+            {
+                outputHandler($"  KeepLocked: {this.settings.KeepLocked}");
+                outputHandler($"  Password: {(string.IsNullOrEmpty(password) ? "Not set" : "Set (hidden)")}");
+                outputHandler();
+            }
+
+            outputHandler($" DoOther: {this.settings.DoOther}");
+            outputHandler();
+
 
             if (this.settings.Behavior == PhotoCopierActions.Reorder)
             {
@@ -730,7 +767,7 @@ public class PhotoCopier
                         File.Copy(sourceMediaPath, targetMediaPath, false);
                     }
 
-                    if (mediaDate > notBeforeDate) File.SetCreationTime(targetMediaPath, mediaDate);
+                    if (mediaDate > notBeforeDate && File.Exists(targetMediaPath)) File.SetCreationTime(targetMediaPath, mediaDate);
                     parent.Increment(ResultCounts.CountKeys.Change);
 
                     if (settings.Logging != LoggingVerbosity.Quiet)
@@ -781,21 +818,32 @@ public class PhotoCopier
     private DateTime GetBestDate(Dictionary<string, DateTime> dates, out bool isBest)
     {
         DateTime mediaDate = DateTime.MinValue;
-        if (dates.TryGetValue("best", out mediaDate) && mediaDate > notBeforeDate)
+        try
         {
-            isBest = true;
-            return mediaDate;
+            if (dates.TryGetValue("best", out mediaDate) && mediaDate > notBeforeDate)
+            {
+                isBest = true;
+                return mediaDate;
+            }
+
+            isBest = false;
+
+            if (dates.TryGetValue("Date/Time Original", out mediaDate) && mediaDate > notBeforeDate) return mediaDate;
+            if (dates.TryGetValue("8:6", out mediaDate) && mediaDate > notBeforeDate) return mediaDate;
+            if (dates.TryGetValue("L8", out mediaDate) && mediaDate > notBeforeDate) return mediaDate;
+            if (dates.TryGetValue("Date/Time", out mediaDate) && mediaDate > notBeforeDate) return mediaDate;
+            if (dates.TryGetValue("byString", out mediaDate) && mediaDate > notBeforeDate) return mediaDate;
+            if (dates.TryGetValue("File Modified Date", out mediaDate) && mediaDate > notBeforeDate) return mediaDate;
+            if (dates.TryGetValue("unix", out mediaDate) && mediaDate > notBeforeDate) return mediaDate;
+
         }
-
-        isBest = false;
-
-        if (dates.TryGetValue("Date/Time Original", out mediaDate) && mediaDate > notBeforeDate) return mediaDate;
-        if (dates.TryGetValue("8:6", out mediaDate) && mediaDate > notBeforeDate) return mediaDate;
-        if (dates.TryGetValue("L8", out mediaDate) && mediaDate > notBeforeDate) return mediaDate;
-        if (dates.TryGetValue("Date/Time", out mediaDate) && mediaDate > notBeforeDate) return mediaDate;
-        if (dates.TryGetValue("byString", out mediaDate) && mediaDate > notBeforeDate) return mediaDate;
-        if (dates.TryGetValue("File Modified Date", out mediaDate) && mediaDate > notBeforeDate) return mediaDate;
-        if (dates.TryGetValue("unix", out mediaDate) && mediaDate > notBeforeDate) return mediaDate;
+        finally
+        {
+            if (mediaDate > DateTime.Now && Debugger.IsAttached)
+            {
+                Debugger.Break();
+            }
+        }
 
         return DateTime.MinValue;
     }
@@ -885,7 +933,7 @@ public class PhotoCopier
             }
             else
             {
-                if (sb.Length > 0)
+                if (sb.Length > 4)
                 {
                     parts.Add(sb.ToString());
                     sb.Clear();
@@ -893,7 +941,7 @@ public class PhotoCopier
             }
         }
 
-        if (sb.Length > 0)
+        if (sb.Length > 4)
         {
             parts.Add(sb.ToString());
         }
@@ -1755,7 +1803,7 @@ public class PhotoCopier
 
         if (dataType == DataType.Photos || dataType == DataType.Locked || dataType == DataType.Mail) subDir = null;
 
-        if (date > notBeforeDate)
+        if (date > notBeforeDate && dataType == DataType.Photos)
         {
             string year = $"{date:yyyy}";
             string month = $"{date:MM}";
@@ -1995,13 +2043,36 @@ public class PhotoCopier
         return new Configs(_paramTypes, true);
     }
 
-    private void ProcessEntry(string entryKey, bool isRetry, ResultCounts parent, ConcurrentDictionary<string, TakeoutInfo> mediaKeys, ConcurrentQueue<TakeoutInfo> retryMediaKeys)
+    private void ProcessEntry(string entryKey, bool isRetry, ResultCounts parent, ConcurrentDictionary<string, TakeoutInfo> entryKeys, ConcurrentQueue<TakeoutInfo> retryMediaKeys)
     {
         if (IsCanceled) return;
 
         DataType dataType = GetDataType(entryKey);
+        bool isMediaType = dataType == DataType.Photos || dataType == DataType.Locked;
 
-        bool foundEntry = mediaKeys.TryGetValue(entryKey, out TakeoutInfo mediaInfo);
+        if (isMediaType)
+        {
+            if (!settings.DoMedia)
+            {
+                return;
+            }
+        }
+        else if (dataType == DataType.Mail)
+        {
+            if (!settings.DoMail)
+            {
+                return;
+            }
+        }
+        else if (!isMediaType && dataType != DataType.Mail)
+        {
+            if (!settings.DoOther)
+            {
+                return;
+            }
+        }
+
+        bool foundEntry = entryKeys.TryGetValue(entryKey, out TakeoutInfo mediaInfo);
 
         ZipArchive archive = null;
         ZipArchiveEntry entry = null;
@@ -2046,8 +2117,6 @@ public class PhotoCopier
                         parent.Increment(ResultCounts.CountKeys.Skip);
                         return;
                     }
-
-                    bool isMediaType = dataType == DataType.Photos || dataType == DataType.Locked;
 
                     if (isMediaType)
                     {
@@ -2108,14 +2177,14 @@ public class PhotoCopier
                     {
                         string targetFile = Path.GetFileName(outputTargetPath);
                         string targetDir = Path.GetDirectoryName(outputTargetPath) ?? string.Empty;
-                        string newTargetFile = Path.GetFileNameWithoutExtension(targetFile) + ".twlock";
+                        string newTargetFile = Path.GetFileNameWithoutExtension(targetFile) + ".twl";
                         outputTargetPath = Path.Combine(targetDir, newTargetFile);
                     }
 
                     bool alreadyExists = false;
                     if (dataType != DataType.Locked)
                     {
-                        alreadyExists = ResolveFileConflict(isRetry, parent, entry.Length, ref outputTargetPath);
+                        alreadyExists = ResolveFileConflict(isRetry, parent, zipStream, ref outputTargetPath);
                     }
 
                     try
@@ -2149,6 +2218,12 @@ public class PhotoCopier
 
                                     default:
                                     {
+                                        // for locked and photos we set the file date
+                                        if (mediaDate < notBeforeDate)
+                                        {
+                                            mediaDate = DateTime.Now;
+                                        }
+
                                         using (FileStream fileStream = new FileStream(outputTargetPath, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize, true))
                                         {
                                             zipStream.Seek(0, SeekOrigin.Begin);
@@ -2189,7 +2264,7 @@ public class PhotoCopier
                                 {
                                 }
 
-                                if (mediaDate > notBeforeDate) File.SetCreationTime(outputTargetPath, mediaDate);
+                                if (mediaDate > notBeforeDate && File.Exists(outputTargetPath)) File.SetCreationTime(outputTargetPath, mediaDate);
                                 if (settings.Logging != LoggingVerbosity.Quiet)
                                 {
                                     outputHandler($"{(isRetry ? retryText : "")}{verb} empty file:\"{entry.Name}\" to \"{Path.Combine(".", targetMediaDirName)}\"");
@@ -2227,6 +2302,11 @@ public class PhotoCopier
         }
 
         return;
+    }
+
+    private Stream GetTempFileStream()
+    {
+        return new FileStream(Path.GetTempFileName(), FileMode.Open, FileAccess.ReadWrite, FileShare.None, 4096, FileOptions.DeleteOnClose);
     }
 
     private Stream GetTemporaryStream(long length)
@@ -2530,7 +2610,7 @@ public class PhotoCopier
     }
 
     // return true if the file exists
-    private bool ResolveFileConflict(bool isRetry, ResultCounts parent, long sourceLength, ref string targetPath)
+    private bool ResolveFileConflict(bool isRetry, ResultCounts parent, Stream sourceStream, ref string targetPath)
     {
         int count = 1;
         string targetDir = Path.GetDirectoryName(targetPath);
@@ -2546,10 +2626,17 @@ public class PhotoCopier
         {
             if (!File.Exists(targetPath)) return false;
 
-            FileInfo fiT = new FileInfo(targetPath);
+            FileInfo fiTarget = new FileInfo(targetPath);
 
-            // same name, both exist, lengths are the same
-            if (sourceLength == fiT.Length) return true;
+            // check if the content is the same
+            using (Stream targetStream = new FileStream(targetPath, FileMode.Open, FileAccess.Read, FileShare.Read))
+            {
+                if (sourceStream.CompareStream(targetStream))
+                {
+                    // the files are the same - the entry is a duplicate
+                    return true;
+                }
+            }
 
             targetPath = Path.Combine(targetDir, $"{targetFName}-{count++}{targetExt}");
         }
@@ -2562,9 +2649,10 @@ public class PhotoCopier
     private bool ResolveFileConflict(bool isRetry, ResultCounts parent, string sourcePath, ref string targetPath)
     {
         if (!File.Exists(sourcePath)) return false;
-        FileInfo fiS = new FileInfo(sourcePath);
-
-        return ResolveFileConflict(isRetry, parent, fiS.Length, ref targetPath);
+        using (FileStream sourceStream = new FileStream(sourcePath, FileMode.Open, FileAccess.Read, FileShare.Read))
+        {
+            return ResolveFileConflict(isRetry, parent, sourceStream, ref targetPath);
+        }
     }
 
     public void ReadMBoxFile(Stream stream, bool isRetry, ResultCounts parent, string outputTargetPath)
@@ -2583,85 +2671,161 @@ public class PhotoCopier
         {
             MimeParser parser = new MimeParser(stream, MimeFormat.Mbox);
 
+            Dictionary<string, int> mailCounts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+
             foreach (MimeMessage entity in parser)
             {
-                HashSet<string> mailFolders = null;
-                Header[] headers = entity.Headers.Where(h => h.Field.Equals("x-gmail-labels", StringComparison.OrdinalIgnoreCase)).ToArray();
+                List<string> mailFolders = null;
+                Header[] headers = entity.Headers.Where(h => h.Field.Equals("addr-gmail-labels", StringComparison.OrdinalIgnoreCase)).ToArray();
+
                 if (headers.Length > 0)
                 {
+                    if (headers.Length != 1) Debugger.Break();
                     // skip category labels
                     string[] labels = headers[0].Value.Trim().Split(',', StringSplitOptions.TrimEntries).Where(l => !l.StartsWith("category", StringComparison.OrdinalIgnoreCase)).ToArray();
-                    mailFolders = labels.Where(l => !labelsToIgnore.Contains(l)).ToHashSet(StringComparer.OrdinalIgnoreCase);
+                    mailFolders = labels.Where(l => !labelsToIgnore.Contains(l)).ToList();
                 }
 
                 string dateString = $"{entity.Date:yyyy}{entity.Date:MM}{entity.Date:dd}T{entity.Date:HH}{entity.Date:mm}{entity.Date:ss}";
 
                 if (mailFolders == null || mailFolders.Count == 0) mailFolders = ["Inbox"];
 
-                ICollection<string> addresses = GetSenders(entity);
-
-                if (mailFolders.Contains("archived"))
+                if (mailFolders.Contains("trash", StringComparer.OrdinalIgnoreCase))
                 {
-                    mailFolders.Remove("archived");
-
-                    List<string> folders = mailFolders.ToList();
-                    folders.Insert(0, "Archived");
-
-                    if (folders.Count == 1)
+                    // doesn't need to be in two folders - if it is in trash it is probably in archived
+                    int indexof = mailFolders.FindIndex(x => string.Equals(x, "archived", StringComparison.OrdinalIgnoreCase));
+                    if (indexof >= 0)
                     {
-                        folders.Add("Inbox");
-                    }
-
-                    mailFolders.Add(string.Join("/", folders));
-                }
-
-                foreach (string mailFolder in mailFolders)
-                {
-                    if (IsCanceled) return;
-                    string folder = mailFolder.Replace('/', '\\');
-
-                    if (folder.Equals("trash", StringComparison.OrdinalIgnoreCase))
-                    {
-                        // skip trash folder
-                        if (!settings.KeepTrash) continue;
-                    }
-                    else if (folder.Equals("spam", StringComparison.OrdinalIgnoreCase))
-                    {
-                        // skip spam folder
-                        if (!settings.KeepSpam) continue;
-                    }
-                    else if (folder.Equals("sent", StringComparison.OrdinalIgnoreCase))
-                    {
-                        // skip sent folder
-                        if (!settings.KeepSent) continue;
-
-                        addresses = GetRecipients(entity);
-                    }
-                    else if (folder.StartsWith("archived", StringComparison.OrdinalIgnoreCase))
-                    {
-                        // skip archived folder
-                        if (!settings.KeepArchived) continue;
-
-                        archivedMailCount++;
-                    }
-
-                    foreach (string address in addresses)
-                    {
-                        // folder/values-date.eml (e.g. "inbox/johndoe@deere.com-20240101T120000.eml")
-                        string fileName = $"{address}-{dateString}.eml";
-
-                        string targetDir = Path.Combine(mailRoot, folder);
-                        System.IO.Directory.CreateDirectory(targetDir);
-
-                        if (settings.Logging != LoggingVerbosity.Quiet) outputHandler($"{(isRetry ? retryText : "")}mail:\"{folder}\\{fileName}\"");
-                        statusUpdate(StatusCode.Progress, 1, $"(mail:{++count})");
-
-                        string fullName = Path.Combine(targetDir, fileName);
-                        entity.WriteTo(fullName);
+                        mailFolders.RemoveAt(indexof);
                     }
                 }
+                else if (mailFolders.Contains("archived", StringComparer.OrdinalIgnoreCase))
+                {
+                    if (mailFolders.Count == 1)
+                    {
+                        mailFolders.Add("Inbox");
+                    }
+                }
+
+                string mailFolder = string.Join("/", mailFolders);
+                if (!mailCounts.TryGetValue(mailFolder, out int counts))
+                {
+                    mailCounts.Add(mailFolder, 0);
+                }
+                mailCounts[mailFolder]++;
 
                 if (IsCanceled) return;
+
+                bool useFrom = true; // use the senders
+                string folder = mailFolder.Replace('/', '\\');
+
+                if (folder.StartsWith("trash", StringComparison.OrdinalIgnoreCase))
+                {
+                    // skip trash folder
+                    if (!settings.KeepTrash) continue;
+                }
+                else if (folder.Equals("spam", StringComparison.OrdinalIgnoreCase))
+                {
+                    // skip spam folder
+                    if (!settings.KeepSpam) continue;
+                }
+                else if (folder.Equals("sent", StringComparison.OrdinalIgnoreCase))
+                {
+                    // skip sent folder
+                    if (!settings.KeepSent) continue;
+
+                    useFrom = false; // use the recipientSet instead of the senders
+                }
+                else if (folder.StartsWith("archived", StringComparison.OrdinalIgnoreCase))
+                {
+                    // skip archived folder
+                    if (!settings.KeepArchived) continue;
+                }
+                else if (folder.Contains("inbox", StringComparison.OrdinalIgnoreCase))
+                {
+                    // skip archived folder
+                    if (!settings.KeepInbox) continue;
+                }
+                else
+                {
+                    if (!settings.KeepOther) continue;
+                }
+
+                string title = CamelCase(entity.Subject?.Trim());
+
+                ICollection<string> addressList = null;
+                if (string.IsNullOrEmpty(title))
+                {
+                    if (addressList == null) addressList = useFrom ? GetSenders(entity) : GetRecipients(entity);
+                    if (addressList.Count > 0)
+                    {
+                        title = addressList.First();
+                    }
+                }
+                else if (title.StartsWith("re", StringComparison.OrdinalIgnoreCase) && title.Length < 4)
+                {
+                    if (addressList == null) addressList = useFrom ? GetSenders(entity) : GetRecipients(entity);
+                    if (addressList.Count > 0)
+                    {
+                        title += $"-{CamelCase(addressList.First())}";
+                    }
+                }
+
+                if (string.IsNullOrEmpty(title))
+                {
+                    title = dateString;
+                }
+
+                // folder/values-date.eml (e.g. "inbox/johndoe@deere.com-20240101T120000.eml")
+                string fileName = $"{title}.eml";
+
+                string targetDir = Path.Combine(mailRoot, folder, $"{entity.Date:yyyy}-{entity.Date:MM}");
+                System.IO.Directory.CreateDirectory(targetDir);
+
+                string targetEmlPath = Path.Combine(targetDir, fileName);
+
+                if (settings.Logging != LoggingVerbosity.Quiet) outputHandler($"{(isRetry ? retryText : "")}mail:\"{folder}\\{fileName}\"");
+                statusUpdate(StatusCode.Progress, 1, $"(mail:{++count})");
+
+                if (File.Exists(targetEmlPath))
+                {
+                    string tmpFile = null;
+                    try
+                    {
+                        tmpFile = Path.GetTempFileName();
+                        entity.WriteTo(tmpFile);
+                        using (FileStream emlStream = new FileStream(tmpFile, FileMode.Open, FileAccess.Read, FileShare.None, 4096, FileOptions.DeleteOnClose))
+                        {
+                            ResolveFileConflict(isRetry, parent, emlStream, ref targetEmlPath);
+                            tmpFile = null;
+                        }
+                    }
+                    finally
+                    {
+                        if (tmpFile != null && File.Exists(tmpFile))
+                        {
+                            try
+                            {
+                                File.Delete(tmpFile);
+                            }
+                            catch (Exception ex)
+                            {
+                                HandleExceptions(ex, parent, $"Could not delete temporary file: {tmpFile}");
+                            }
+                        }
+                    }
+                }
+
+                entity.WriteTo(targetEmlPath);
+                if (entity.Date > notBeforeDate && File.Exists(targetEmlPath)) File.SetCreationTime(targetEmlPath, entity.Date.DateTime);
+
+                if (IsCanceled) return;
+            }
+
+            outputHandler("Mail counts:");
+            foreach (string key in mailCounts.Keys)
+            {
+                outputHandler($"  {key}:{mailCounts[key]}");
             }
         }
         catch (Exception ex)
@@ -2675,168 +2839,198 @@ public class PhotoCopier
         }
     }
 
-    private ICollection<string> GetRecipients(MimeMessage entity)
+    private string CamelCase(string text)
     {
-        HashSet<string> addresses = new HashSet<string>(StringComparer.Ordinal);
+        if (string.IsNullOrEmpty(text)) return string.Empty;
 
-        if (replaceChars == null)
-        {
-            replaceChars = new HashSet<char>(Path.GetInvalidFileNameChars());
-        }
+        // remove non-letter and non-number characters, camel casing the results
+        // keep the first 32 characters only
 
-        if (entity.Sender != null)
+        StringBuilder sb = new StringBuilder();
+        bool makeUpper = true;
+        foreach (char ch in text)
         {
-            string[] values = entity.GetRecipients(true).Select(r => r.Address).ToArray();
-            foreach (string recipient in values)
+            if (sb.Length >= 32) break;
+            char c = ch;
+
+            if (c == '`')
             {
-                if (recipient.Contains('@'))
-                {
-                    addresses.Add(recipient.Trim());
-                }
+                c = '\'';
             }
-        }
-
-        Header[] headers = entity.Headers.Where(h => h.Field.Equals("to", StringComparison.OrdinalIgnoreCase)).ToArray();
-        if (headers.Length > 0)
-        {
-            string[] values = headers[0].Value.Trim().Split(',', StringSplitOptions.TrimEntries);
-            foreach (string recipient in values)
+            
+            if (!char.IsLetterOrDigit(c) && c != '\'')
             {
-                if (recipient.Contains('@'))
-                {
-                    addresses.Add(recipient.Trim());
-                }
-            }
-        }
-
-        string[] recipients = addresses.ToArray();
-
-        for (int ii = 0; ii < recipients.Length; ii++)
-        {
-            recipients[ii] = NormalizeAddress(recipients[ii]);
-        }
-
-        return recipients;
-    }
-
-    private string NormalizeAddress(string address)
-    {
-        string[] addressParts = address.Split(['>', '<'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-
-        string addressPart = string.Empty;
-        string namePart = string.Empty;
-
-        foreach (string part in addressParts)
-        {
-            if (part.Contains('@'))
-            {
-                addressPart = part.Trim();
+                makeUpper = true;
+                continue;
             }
             else
             {
-                namePart = part.Trim();
-            }
-        }
-
-        string domain = string.Empty;
-        int atIndex = addressPart.IndexOf('@');
-        if (atIndex > 0)
-        {
-            string name = addressPart.Substring(0, atIndex).Trim();
-            if (namePart.Length == 0 && name.Length > 0)
-            {
-                namePart = name;
-            }
-
-            string fullDomain = addressPart.Substring(atIndex + 1).Trim();
-            if (fullDomain != null && fullDomain.Length > 0)
-            {
-                string[] parts = fullDomain.Split('.', StringSplitOptions.TrimEntries);
-
-                if (parts.Length > 1)
+                if (makeUpper)
                 {
-                    // remove the domain part
-                    domain = parts[parts.Length - 2];
+                    sb.Append(char.ToUpper(c));
+                    makeUpper = false;
+                }
+                else
+                {
+                    sb.Append(char.ToLower(c));
                 }
             }
         }
-        else
+
+        return sb.ToString();
+    }
+
+    private void GetReplaceChars()
+    {
+        if (replaceChars != null)
         {
-            if (Debugger.IsAttached) { Debugger.Break(); }
+            return;
         }
 
-        if (namePart.Length > 0)
+        replaceChars = new HashSet<char>(Path.GetInvalidFileNameChars());
+    }
+
+    private ICollection<string> GetRecipients(MimeMessage entity)
+    {
+        HashSet<string> recipientSet = new HashSet<string>(StringComparer.Ordinal);
+
+        GetReplaceChars();
+
+        if (entity.To != null)
         {
-            StringBuilder sbName = new StringBuilder();
-            foreach (char ch in namePart)
+            foreach (var to in entity.To)
             {
-                if (!char.IsLetterOrDigit(ch)) continue;
-                sbName.Append(ch);
+                string recipient = to.ToString().Trim();
+                if (recipient.Contains('@'))
+                {
+                    recipientSet.Add(recipient.Trim());
+                }
+            }
+        }
+
+        if (recipientSet.Count == 0)
+        {
+            Header[] headers = entity.Headers.Where(h => h.Field.Equals("to", StringComparison.OrdinalIgnoreCase)).ToArray();
+            if (headers.Length > 0)
+            {
+                string[] values = headers[0].Value.Trim().Split(',', StringSplitOptions.TrimEntries);
+                foreach (string recipient in values)
+                {
+                    if (recipient.Contains('@'))
+                    {
+                        recipientSet.Add(recipient.Trim());
+                    }
+                }
+            }
+        }
+
+        return NormalizeAddresses(recipientSet);
+    }
+
+    private ICollection<string> NormalizeAddresses(ICollection<string> addresses)
+    {
+        HashSet<string> results = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (string address in addresses)
+        {
+            string[] addressParts = address.Split(['>', '<'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+            string addressPart = string.Empty;
+            string namePart = string.Empty;
+
+            foreach (string part in addressParts)
+            {
+                if (part.Contains('@'))
+                {
+                    addressPart = part.Trim();
+                }
+                else
+                {
+                    namePart = part.Trim();
+                }
             }
 
-            namePart = sbName.ToString();
+            string domain = string.Empty;
+            int atIndex = addressPart.IndexOf('@');
+            if (atIndex > 0)
+            {
+                string name = addressPart.Substring(0, atIndex).Trim();
+                if (namePart.Length == 0 && name.Length > 0)
+                {
+                    namePart = name;
+                }
+
+                string fullDomain = addressPart.Substring(atIndex + 1).Trim();
+                if (fullDomain != null && fullDomain.Length > 0)
+                {
+                    string[] parts = fullDomain.Split('.', StringSplitOptions.TrimEntries);
+
+                    if (parts.Length > 1)
+                    {
+                        // remove the domain part
+                        domain = parts[parts.Length - 2];
+                    }
+                }
+            }
+            else
+            {
+                if (Debugger.IsAttached) { Debugger.Break(); }
+            }
+
+            if (namePart.Length > 0)
+            {
+                namePart = CamelCase(namePart);
+            }
+
+            results.Add($"{namePart}@{domain}");
         }
 
-        return $"{namePart}@{domain}";
+        return results;
     }
 
     private HashSet<char> replaceChars = null;
 
     private ICollection<string> GetSenders(MimeMessage entity)
     {
-        HashSet<string> addresses = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        HashSet<string> fromSet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-        if (replaceChars == null)
-        {
-            replaceChars = new HashSet<char>(Path.GetInvalidFileNameChars());
-        }
+        GetReplaceChars();
 
         if (entity.Sender != null)
         {
-            string sender = entity.Sender.ToString().Trim();
-            if (sender.Contains('@')) addresses.Add(sender);
+            if (entity.Sender is MailboxAddress mailboxAddress)
+            {
+                // use the mailbox address
+                string address = mailboxAddress.ToString().Trim();
+                if (address.Contains('@')) fromSet.Add(address);
+            }
+            else
+            {
+                Debugger.Break();
+            }
         }
-        
-        if (entity.From.Count > 0)
+
+        if (fromSet.Count == 0 && entity.From.Count > 0)
         {
             foreach (InternetAddress address in entity.From)
             {
-                if (address is MailboxAddress mailboxAddress)
-                {
-                    // use the mailbox address
-                    string sender = mailboxAddress.Address.Trim();
-                    if (!sender.Contains('@')) continue;
-
-                    addresses.Add(mailboxAddress.Address);
-                }
+                string addr = address.ToString();
+                if (addr.Contains('@')) fromSet.Add(addr);
             }
         }
 
-        Header[] headers = entity.Headers.Where(h => h.Field.Equals("senders", StringComparison.OrdinalIgnoreCase)).ToArray();
-        foreach (Header header in headers)
+        if (fromSet.Count == 0)
         {
-            string sender = header.Value.Trim();
-            if (!sender.Contains('@')) continue;
-
-            addresses.Add(header.Value.Trim());
-        }
-
-        string[] all = addresses.ToArray();
-        foreach (string sender in all)
-        {
-            if (addresses.Count > 1 && !sender.Contains('<'))
+            Header[] headers = entity.Headers.Where(h => h.Field.Equals("senders", StringComparison.OrdinalIgnoreCase)).ToArray();
+            foreach (Header header in headers)
             {
-                addresses.Remove(sender);
+                string sender = header.Value.Trim();
+                if (!sender.Contains('@')) continue;
+                fromSet.Add(header.Value.Trim());
             }
         }
 
-        List<string> senders = new List<string>();
-        for (int ii = 0; ii < addresses.Count; ii++)
-        {
-            senders.Add(NormalizeAddress(all[ii]));
-        }
-
-        return senders;
+        return NormalizeAddresses(fromSet);
     }
 
     public Settings GetSettings(Configs configs)
@@ -2853,12 +3047,16 @@ public class PhotoCopier
         configs.TryGetBool("listonly", out bool listOnly);
         configs.TryGetBool("parallel", out bool parallel);
         configs.TryGetString("junk", out string junk);
-        configs.TryGetBool("keeplocked", out bool keepLocked);
+        configs.TryGetBool("keepLocked", out bool keepLocked);
         configs.TryGetBool("keepTrash", out bool keepTrash);
         configs.TryGetBool("keepSpam", out bool keepSpam);
         configs.TryGetBool("keepSent", out bool keepSent);
         configs.TryGetBool("keepArchived", out bool keepArchived);
-        configs.TryGetBool("purgeGmailArchive", out bool purgeArchived);
+        configs.TryGetBool("keepInbox", out bool keepInbox);
+        configs.TryGetBool("keepOther", out bool keepOther);
+        configs.TryGetBool("domail", out bool doMail);
+        configs.TryGetBool("domedia", out bool doMedia);
+        configs.TryGetBool("doother", out bool doOther);
 
         if (!Enum.TryParse(actionString, true, out PhotoCopierActions behavior)) behavior = PhotoCopierActions.Copy;
         if (!Enum.TryParse(loggingString, true, out LoggingVerbosity logging)) logging = LoggingVerbosity.Verbose;
@@ -2878,6 +3076,9 @@ public class PhotoCopier
         newSettings.KeepSpam = keepSpam;
         newSettings.KeepSent = keepSent;
         newSettings.KeepArchived = keepArchived;
+        newSettings.DoMail = doMail;
+        newSettings.DoMedia = doMedia;
+        newSettings.DoOther = doOther;
 
         return newSettings;
     }

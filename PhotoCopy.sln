@@ -66,7 +66,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "PublishFiles", "PublishFile
 		Installers\PublishFiles\wonky.crt = Installers\PublishFiles\wonky.crt
 	EndProjectSection
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TakeoutWranglerUnlock", "DecryptDisplay\TakeoutWranglerUnlock.csproj", "{DA039C27-E153-4415-B53A-0C7E7DB05141}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TakeoutWranglerViewer", "DecryptDisplay\TakeoutWranglerViewer.csproj", "{DA039C27-E153-4415-B53A-0C7E7DB05141}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CommonLibrary", "CommonLibrary\CommonLibrary.csproj", "{CCE3ADAA-6115-4D59-B6C3-21CA02E3B9D8}"
 EndProject

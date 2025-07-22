@@ -46,3 +46,5 @@
 -all=Changed DecryptDisplay to TakeoutWranglerUnlock.
 -git(d9b602b4a5984ff51780c58b29d54798b8088d46)=Handle all takeout files. Encrypt 'Locked' photos. Added TakeoutWranglerUnlock to display 'locked' photos with a password. Added support for email. Bug fixes and performance improvements.
 -git(669f536c86ea1b812201e873e579cca734530328)=Changed the name of the decrypt display in the installer.
+-all=Simplified unlock password entry. Improved email filenames to use subject instead of address.
+-all=Changed name from TakeoutWranglerUnlock to TakeoutWranglerViewer.

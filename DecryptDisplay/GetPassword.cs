@@ -15,7 +15,7 @@ public partial class GetPassword : Form
     {
         get
         {
-            if (textBoxPassword.Text == textBoxConfirm.Text && textBoxPassword.Text.Length > 8)
+            if (textBoxPassword.Text.Length > 8)
             {
                 return textBoxPassword.Text;
             }
@@ -46,7 +46,7 @@ public partial class GetPassword : Form
 
     private void ValidatePassword()
     {
-        if (textBoxPassword.Text == textBoxConfirm.Text && textBoxPassword.Text.Length >= 8)
+        if (textBoxPassword.Text.Length >= 8)
         {
             buttonOkay.Enabled = true;
         }
@@ -64,16 +64,6 @@ public partial class GetPassword : Form
     private void buttonShowPassword_MouseUp(object sender, MouseEventArgs e)
     {
         ButtonShow(textBoxPassword, false);
-    }
-
-    private void buttonShowConfirm_MouseDown(object sender, MouseEventArgs e)
-    {
-        ButtonShow(textBoxConfirm, true);
-    }
-
-    private void buttonShowConfirm_MouseUp(object sender, MouseEventArgs e)
-    {
-        ButtonShow(textBoxConfirm, false);
     }
 
     private void ButtonShow(TextBox textBox, bool showPassword)

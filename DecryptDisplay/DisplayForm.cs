@@ -133,7 +133,7 @@ public partial class DisplayForm : Form
         OpenFileDialog openFileDialog = new OpenFileDialog
         {
             Title = "Select a file to decrypt",
-            Filter = "Encrypted Files (*.twlock)|*.twlock|All Files (*.*)|*.*",
+            Filter = "Encrypted Files (*.twl)|*.twl|All Files (*.*)|*.*",
             Multiselect = true,
             InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments)
         };
@@ -353,7 +353,7 @@ public partial class DisplayForm : Form
         SetRichTextBoxLines(
         [
             $"DecryptDisplay v{appVersion.ToString()}",
-            "This application is used to decrypt and display files encrypted with the .twlock format.",
+            "This application is used to decrypt and display files encrypted with the .twl format.",
             "Developed by Stewart Nutter",
             "For more information, visit: https://github.com/buzznut/TakeoutWrangler"
         ]);
@@ -439,7 +439,7 @@ public partial class DisplayForm : Form
         {
             for (int ii = 0; ii < args.Count; ii++)
             {
-                if (args[ii].Contains(".twlock", StringComparison.OrdinalIgnoreCase))
+                if (args[ii].Contains(".twl", StringComparison.OrdinalIgnoreCase))
                 {
                     argFiles.Add(args[ii]);
                 }
@@ -457,13 +457,28 @@ public partial class DisplayForm : Form
         allFiles = selectedFiles.ToList();
         if (allFiles.Count == 0)
         {
-            SetRichTextBoxLine("No .twlock files selected.");
+            SetRichTextBoxLine("No .twl files selected.");
             return;
         }
 
         allFiles.Sort();
         currentFileIndex = 0;
         lastCurrentFileIndex = -1;
+
+        if (string.IsNullOrEmpty(password))
+        {
+            RequestPassword();
+        }
+
+        DoDisplay();
+    }
+
+    private void RequestPassword()
+    {
+        password = string.Empty;
+
+        SetControl(richTextInfo);
+        SetRichTextBoxLine("Please enter the password to decrypt the file.");
 
         GetPassword getPasswordForm = new GetPassword();
         if (getPasswordForm.ShowDialog() == DialogResult.OK)
@@ -480,5 +495,10 @@ public partial class DisplayForm : Form
                 SetRichTextBoxLine("Password is required to decrypt the file.");
             }
         }
+    }
+
+    private void toolStripMenuItemPassword_Click(object sender, EventArgs e)
+    {
+        RequestPassword();
     }
 }

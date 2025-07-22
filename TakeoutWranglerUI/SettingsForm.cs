@@ -82,10 +82,15 @@ public partial class SettingsForm : Form
         checkBoxKeepLocked.Checked = Settings.KeepLocked;
 
         // mail
+        checkBoxInbox.Checked = Settings.KeepInbox;
         checkBoxTrash.Checked = Settings.KeepTrash;
         checkBoxSpam.Checked = Settings.KeepSpam;
         checkBoxSent.Checked = Settings.KeepSent;
         checkBoxArchived.Checked = Settings.KeepArchived;
+        checkBoxOther.Checked = Settings.KeepOther;
+        checkBoxMail.Checked = Settings.DoMail;
+        checkBoxMedia.Checked = Settings.DoMedia;
+        checkBoxDoOther.Checked = Settings.DoOther;
 
         SetActionDescription();
         isLoaded = true;
@@ -149,6 +154,21 @@ public partial class SettingsForm : Form
 
         changed |= Settings.KeepArchived != checkBoxArchived.Checked;
         Settings.KeepArchived = checkBoxArchived.Checked;
+
+        changed |= Settings.KeepInbox != checkBoxInbox.Checked;
+        Settings.KeepInbox = checkBoxInbox.Checked;
+
+        changed |= Settings.KeepOther != checkBoxOther.Checked;
+        Settings.KeepOther = checkBoxDoOther.Checked;
+
+        changed |= Settings.DoMail != checkBoxMail.Checked;
+        Settings.DoMail = checkBoxMail.Checked;
+
+        changed |= Settings.DoMedia != checkBoxMedia.Checked;
+        Settings.DoMedia = checkBoxMedia.Checked;
+
+        changed |= Settings.DoOther != checkBoxDoOther.Checked;
+        Settings.DoOther = checkBoxDoOther.Checked;
 
         if (changed)
         {

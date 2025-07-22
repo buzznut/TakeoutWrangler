@@ -81,19 +81,28 @@ namespace TakeoutWranglerUI
             comboBoxActions = new ComboBox();
             tabControlSettings = new TabControl();
             tabActions = new TabPage();
+            tabPageContent = new TabPage();
+            groupBoxContent = new GroupBox();
+            checkBoxDoOther = new CheckBox();
+            checkBoxMail = new CheckBox();
+            checkBoxMedia = new CheckBox();
             tabSource = new TabPage();
             tabTarget = new TabPage();
             tabMail = new TabPage();
             groupBoxMailFolders = new GroupBox();
+            checkBoxInbox = new CheckBox();
             checkBoxArchived = new CheckBox();
             checkBoxSent = new CheckBox();
             checkBoxSpam = new CheckBox();
             checkBoxTrash = new CheckBox();
+            checkBoxOther = new CheckBox();
             groupBoxSource.SuspendLayout();
             groupBoxDestination.SuspendLayout();
             groupBoxAction.SuspendLayout();
             tabControlSettings.SuspendLayout();
             tabActions.SuspendLayout();
+            tabPageContent.SuspendLayout();
+            groupBoxContent.SuspendLayout();
             tabSource.SuspendLayout();
             tabTarget.SuspendLayout();
             tabMail.SuspendLayout();
@@ -537,6 +546,7 @@ namespace TakeoutWranglerUI
             // 
             tabControlSettings.Appearance = TabAppearance.FlatButtons;
             tabControlSettings.Controls.Add(tabActions);
+            tabControlSettings.Controls.Add(tabPageContent);
             tabControlSettings.Controls.Add(tabSource);
             tabControlSettings.Controls.Add(tabTarget);
             tabControlSettings.Controls.Add(tabMail);
@@ -556,6 +566,60 @@ namespace TakeoutWranglerUI
             tabActions.TabIndex = 0;
             tabActions.Text = "Actions";
             tabActions.UseVisualStyleBackColor = true;
+            // 
+            // tabPageContent
+            // 
+            tabPageContent.Controls.Add(groupBoxContent);
+            tabPageContent.Location = new Point(4, 27);
+            tabPageContent.Name = "tabPageContent";
+            tabPageContent.Padding = new Padding(3);
+            tabPageContent.Size = new Size(672, 236);
+            tabPageContent.TabIndex = 4;
+            tabPageContent.Text = "Content";
+            tabPageContent.UseVisualStyleBackColor = true;
+            // 
+            // groupBoxContent
+            // 
+            groupBoxContent.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+            groupBoxContent.Controls.Add(checkBoxDoOther);
+            groupBoxContent.Controls.Add(checkBoxMail);
+            groupBoxContent.Controls.Add(checkBoxMedia);
+            groupBoxContent.Location = new Point(6, 6);
+            groupBoxContent.Name = "groupBoxContent";
+            groupBoxContent.Size = new Size(661, 88);
+            groupBoxContent.TabIndex = 1;
+            groupBoxContent.TabStop = false;
+            groupBoxContent.Text = "Content handing";
+            // 
+            // checkBoxDoOther
+            // 
+            checkBoxDoOther.AutoSize = true;
+            checkBoxDoOther.Location = new Point(7, 58);
+            checkBoxDoOther.Name = "checkBoxDoOther";
+            checkBoxDoOther.Size = new Size(127, 19);
+            checkBoxDoOther.TabIndex = 2;
+            checkBoxDoOther.Text = "Keep other content";
+            checkBoxDoOther.UseVisualStyleBackColor = true;
+            // 
+            // checkBoxMail
+            // 
+            checkBoxMail.AutoSize = true;
+            checkBoxMail.Location = new Point(7, 39);
+            checkBoxMail.Name = "checkBoxMail";
+            checkBoxMail.Size = new Size(128, 19);
+            checkBoxMail.TabIndex = 1;
+            checkBoxMail.Text = "Keep email content";
+            checkBoxMail.UseVisualStyleBackColor = true;
+            // 
+            // checkBoxMedia
+            // 
+            checkBoxMedia.AutoSize = true;
+            checkBoxMedia.Location = new Point(7, 20);
+            checkBoxMedia.Name = "checkBoxMedia";
+            checkBoxMedia.Size = new Size(169, 19);
+            checkBoxMedia.TabIndex = 0;
+            checkBoxMedia.Text = "Keep photo/media content";
+            checkBoxMedia.UseVisualStyleBackColor = true;
             // 
             // tabSource
             // 
@@ -592,16 +656,28 @@ namespace TakeoutWranglerUI
             // groupBoxMailFolders
             // 
             groupBoxMailFolders.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+            groupBoxMailFolders.Controls.Add(checkBoxOther);
+            groupBoxMailFolders.Controls.Add(checkBoxInbox);
             groupBoxMailFolders.Controls.Add(checkBoxArchived);
             groupBoxMailFolders.Controls.Add(checkBoxSent);
             groupBoxMailFolders.Controls.Add(checkBoxSpam);
             groupBoxMailFolders.Controls.Add(checkBoxTrash);
             groupBoxMailFolders.Location = new Point(5, 5);
             groupBoxMailFolders.Name = "groupBoxMailFolders";
-            groupBoxMailFolders.Size = new Size(661, 125);
+            groupBoxMailFolders.Size = new Size(661, 139);
             groupBoxMailFolders.TabIndex = 0;
             groupBoxMailFolders.TabStop = false;
             groupBoxMailFolders.Text = "Folder handing";
+            // 
+            // checkBoxInbox
+            // 
+            checkBoxInbox.AutoSize = true;
+            checkBoxInbox.Location = new Point(7, 96);
+            checkBoxInbox.Name = "checkBoxInbox";
+            checkBoxInbox.Size = new Size(133, 19);
+            checkBoxInbox.TabIndex = 4;
+            checkBoxInbox.Text = "Keep inbox contents";
+            checkBoxInbox.UseVisualStyleBackColor = true;
             // 
             // checkBoxArchived
             // 
@@ -643,6 +719,16 @@ namespace TakeoutWranglerUI
             checkBoxTrash.Text = "Keep trash contents";
             checkBoxTrash.UseVisualStyleBackColor = true;
             // 
+            // checkBoxOther
+            // 
+            checkBoxOther.AutoSize = true;
+            checkBoxOther.Location = new Point(7, 115);
+            checkBoxOther.Name = "checkBoxOther";
+            checkBoxOther.Size = new Size(161, 19);
+            checkBoxOther.TabIndex = 5;
+            checkBoxOther.Text = "Keep other folder content";
+            checkBoxOther.UseVisualStyleBackColor = true;
+            // 
             // SettingsForm
             // 
             AcceptButton = buttonOkay;
@@ -668,6 +754,9 @@ namespace TakeoutWranglerUI
             groupBoxAction.PerformLayout();
             tabControlSettings.ResumeLayout(false);
             tabActions.ResumeLayout(false);
+            tabPageContent.ResumeLayout(false);
+            groupBoxContent.ResumeLayout(false);
+            groupBoxContent.PerformLayout();
             tabSource.ResumeLayout(false);
             tabTarget.ResumeLayout(false);
             tabMail.ResumeLayout(false);
@@ -728,5 +817,12 @@ namespace TakeoutWranglerUI
         private CheckBox checkBoxTrash;
         private CheckBox checkBoxSent;
         private CheckBox checkBoxArchived;
+        private TabPage tabPageContent;
+        private GroupBox groupBoxContent;
+        private CheckBox checkBoxDoOther;
+        private CheckBox checkBoxMail;
+        private CheckBox checkBoxMedia;
+        private CheckBox checkBoxInbox;
+        private CheckBox checkBoxOther;
     }
 }

@@ -18,4 +18,9 @@ public class Settings
     public bool KeepTrash { get; set; }
     public bool KeepSent { get; set; } = true;
     public bool KeepArchived { get; set; }
+    public bool KeepInbox { get; set; } = true;
+    public bool KeepOther { get; set; } = true;
+    public bool DoMail { get; set; } = true;
+    public bool DoMedia { get; set; } = true;
+    public bool DoOther { get; set; } = true;
 }

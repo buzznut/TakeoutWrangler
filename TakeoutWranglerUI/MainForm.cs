@@ -413,6 +413,11 @@ public partial class MainForm : Form
             configs.SetBool("keepTrash", settings.KeepTrash);
             configs.SetBool("keepSent", settings.KeepSent);
             configs.SetBool("keepArchived", settings.KeepArchived);
+            configs.SetBool("keepInbox", settings.KeepInbox);
+            configs.SetBool("keepOther", settings.KeepOther);
+            configs.SetBool("domail", settings.DoMail);
+            configs.SetBool("domedia", settings.DoMedia);
+            configs.SetBool("doother", settings.DoOther);
 
             if (result == DialogResult.Yes)
             {

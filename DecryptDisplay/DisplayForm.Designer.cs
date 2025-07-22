@@ -42,6 +42,8 @@ namespace DecryptDisplay
             toolStripMenuItem1 = new ToolStripMenuItem();
             saveAsToolStripMenuItem = new ToolStripMenuItem();
             toolStripSeparator1 = new ToolStripSeparator();
+            toolStripMenuItemPassword = new ToolStripMenuItem();
+            toolStripSeparator2 = new ToolStripSeparator();
             exitToolStripMenuItem = new ToolStripMenuItem();
             aboutToolStripMenuItem = new ToolStripMenuItem();
             aboutToolStripMenuItem1 = new ToolStripMenuItem();
@@ -71,7 +73,7 @@ namespace DecryptDisplay
             // 
             // saveToolStripMenuItem
             // 
-            saveToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { toolStripMenuItem1, saveAsToolStripMenuItem, toolStripSeparator1, exitToolStripMenuItem });
+            saveToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { toolStripMenuItem1, saveAsToolStripMenuItem, toolStripSeparator1, toolStripMenuItemPassword, toolStripSeparator2, exitToolStripMenuItem });
             saveToolStripMenuItem.Name = "saveToolStripMenuItem";
             saveToolStripMenuItem.Size = new Size(37, 20);
             saveToolStripMenuItem.Text = "File";
@@ -94,6 +96,18 @@ namespace DecryptDisplay
             // 
             toolStripSeparator1.Name = "toolStripSeparator1";
             toolStripSeparator1.Size = new Size(179, 6);
+            // 
+            // toolStripMenuItemPassword
+            // 
+            toolStripMenuItemPassword.Name = "toolStripMenuItemPassword";
+            toolStripMenuItemPassword.Size = new Size(182, 22);
+            toolStripMenuItemPassword.Text = "Enter password...";
+            toolStripMenuItemPassword.Click += toolStripMenuItemPassword_Click;
+            // 
+            // toolStripSeparator2
+            // 
+            toolStripSeparator2.Name = "toolStripSeparator2";
+            toolStripSeparator2.Size = new Size(179, 6);
             // 
             // exitToolStripMenuItem
             // 
@@ -201,7 +215,7 @@ namespace DecryptDisplay
             Icon = (Icon)resources.GetObject("$this.Icon");
             MainMenuStrip = menuStrip;
             Name = "DisplayForm";
-            Text = "DisplayForm";
+            Text = "Takeout Wrangler Unlock";
             FormClosing += DisplayForm_FormClosing;
             Load += DisplayForm_Load;
             menuStrip.ResumeLayout(false);
@@ -230,5 +244,7 @@ namespace DecryptDisplay
         private Button buttonPrevious;
         private System.Windows.Forms.Timer timerPasswordCheck;
         private SaveFileDialog saveFileDialog;
+        private ToolStripMenuItem toolStripMenuItemPassword;
+        private ToolStripSeparator toolStripSeparator2;
     }
 }

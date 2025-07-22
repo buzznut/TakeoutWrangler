@@ -37,11 +37,8 @@ namespace DecryptDisplay
         {
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(GetPassword));
             groupBoxPassword = new GroupBox();
-            buttonShowConfirm = new Button();
             buttonShowPassword = new Button();
-            textBoxConfirm = new TextBox();
             textBoxPassword = new TextBox();
-            labelConfirm = new Label();
             labelPassword = new Label();
             buttonCancel = new Button();
             buttonOkay = new Button();
@@ -51,29 +48,15 @@ namespace DecryptDisplay
             // groupBoxPassword
             // 
             groupBoxPassword.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
-            groupBoxPassword.Controls.Add(buttonShowConfirm);
             groupBoxPassword.Controls.Add(buttonShowPassword);
-            groupBoxPassword.Controls.Add(textBoxConfirm);
             groupBoxPassword.Controls.Add(textBoxPassword);
-            groupBoxPassword.Controls.Add(labelConfirm);
             groupBoxPassword.Controls.Add(labelPassword);
             groupBoxPassword.Location = new Point(6, 8);
             groupBoxPassword.Name = "groupBoxPassword";
-            groupBoxPassword.Size = new Size(330, 87);
+            groupBoxPassword.Size = new Size(330, 59);
             groupBoxPassword.TabIndex = 0;
             groupBoxPassword.TabStop = false;
             groupBoxPassword.Text = "Enter data";
-            // 
-            // buttonShowConfirm
-            // 
-            buttonShowConfirm.Location = new Point(307, 55);
-            buttonShowConfirm.Name = "buttonShowConfirm";
-            buttonShowConfirm.Size = new Size(16, 18);
-            buttonShowConfirm.TabIndex = 5;
-            buttonShowConfirm.Text = "*";
-            buttonShowConfirm.UseVisualStyleBackColor = true;
-            buttonShowConfirm.MouseDown += buttonShowConfirm_MouseDown;
-            buttonShowConfirm.MouseUp += buttonShowConfirm_MouseUp;
             // 
             // buttonShowPassword
             // 
@@ -86,16 +69,6 @@ namespace DecryptDisplay
             buttonShowPassword.MouseDown += buttonShowPassword_MouseDown;
             buttonShowPassword.MouseUp += buttonShowPassword_MouseUp;
             // 
-            // textBoxConfirm
-            // 
-            textBoxConfirm.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
-            textBoxConfirm.Location = new Point(90, 48);
-            textBoxConfirm.Name = "textBoxConfirm";
-            textBoxConfirm.Size = new Size(215, 23);
-            textBoxConfirm.TabIndex = 3;
-            textBoxConfirm.UseSystemPasswordChar = true;
-            textBoxConfirm.TextChanged += textBox_TextChanged;
-            // 
             // textBoxPassword
             // 
             textBoxPassword.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
@@ -105,15 +78,6 @@ namespace DecryptDisplay
             textBoxPassword.TabIndex = 2;
             textBoxPassword.UseSystemPasswordChar = true;
             textBoxPassword.TextChanged += textBox_TextChanged;
-            // 
-            // labelConfirm
-            // 
-            labelConfirm.AutoSize = true;
-            labelConfirm.Location = new Point(30, 51);
-            labelConfirm.Name = "labelConfirm";
-            labelConfirm.Size = new Size(54, 15);
-            labelConfirm.TabIndex = 1;
-            labelConfirm.Text = "Confirm:";
             // 
             // labelPassword
             // 
@@ -171,13 +135,10 @@ namespace DecryptDisplay
         #endregion
 
         private GroupBox groupBoxPassword;
-        private TextBox textBoxConfirm;
         private TextBox textBoxPassword;
-        private Label labelConfirm;
         private Label labelPassword;
         private Button buttonCancel;
         private Button buttonOkay;
         private Button buttonShowPassword;
-        private Button buttonShowConfirm;
     }
 }

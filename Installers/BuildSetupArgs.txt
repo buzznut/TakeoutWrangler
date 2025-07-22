@@ -1,7 +1,6 @@
 -setup=*setup.exe 
 -auto=*update.xml 
 -change=*changelog.txt
--git=C:\Users\sanut\OneDrive\GitMaster\PhotoCopy.git
 -master=changes.txt
 -url='https://raw.githubusercontent.com/buzznut/TakeoutWrangler/refs/heads/master/Installers/TakeoutWrangler/Output/' 
 -publish='d:\takeoutwrangler-publish'

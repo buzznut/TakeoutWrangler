@@ -56,7 +56,7 @@ internal static class Program
             foreach (string key in cmdKeys)
             {
                 string test = commands.GetCommand(key)?.Trim();
-                if (string.IsNullOrEmpty(test))
+                if (string.IsNullOrEmpty(test) && !key.Equals("git", StringComparison.OrdinalIgnoreCase))
                 {
                     Console.WriteLine($"Required parameter '{key}': \"{test ?? "null"}\"");
                     showHelp = true;

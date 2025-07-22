@@ -7,7 +7,7 @@
 #define MySourceDir "C:\Users\sanut\OneDrive\GitCode\PhotoCopy\TakeoutWranglerUI\bin\Release\net9.0-windows8.0\"
 #define MySourceExe MySourceDir + "\" + MyAppExeName
 
-#define MyDecryptAppName "TakeoutWranglerUnlock"
+#define MyDecryptAppName "TakeoutWranglerViewer"
 #define MyDecryptAppExeName MyDecryptAppName + ".exe"
 #define MyDecryptSourceDir "C:\Users\sanut\OneDrive\GitCode\PhotoCopy\DecryptDisplay\bin\Release\net9.0-windows\"
 #define MyDecryptSourceExe MyDecryptSourceDir + "\" + MyDecryptAppExeName
@@ -50,12 +50,12 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked; Components: TakeoutWrangler DecryptDisplay
-Name: twlockAssociation; Description: "{cm:AssocFileExtension,{#MyDecryptAppName},twlock}"; GroupDescription: File extensions:
+Name: twlockAssociation; Description: "{cm:AssocFileExtension,{#MyDecryptAppName},twl}"; GroupDescription: File extensions:
 
 [Types]
-Name: "full"; Description: "Install TakeoutWranglerUI and TakeoutWranglerUnlock"
+Name: "full"; Description: "Install TakeoutWranglerUI and TakeoutWranglerViewer"
 Name: "onlyTakeoutWrangler"; Description: "Install Only TakeoutWranglerUI"
-Name: "onlyDecryptDisplay"; Description: "Install Only TakeoutWranglerUnlock"
+Name: "onlyDecryptDisplay"; Description: "Install Only TakeoutWranglerViewer"
 
 [Components]
 Name: "TakeoutWrangler"; Description: "TakeoutWrangler UI  only"; Types: onlyTakeoutWrangler full
@@ -71,7 +71,7 @@ Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
 Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
 
 [Registry]
-Root: HKCR; Subkey: ".twlock"; ValueData: "{#MyDecryptAppName}"; Flags: uninsdeletevalue; ValueType: string;  ValueName: ""
+Root: HKCR; Subkey: ".twl"; ValueData: "{#MyDecryptAppName}"; Flags: uninsdeletevalue; ValueType: string;  ValueName: ""
 Root: HKCR; Subkey: "{#MyDecryptAppName}"; ValueData: "Program {#MyDecryptAppName}";  Flags: uninsdeletekey;   ValueType: string;  ValueName: ""
 Root: HKCR; Subkey: "{#MyDecryptAppName}\DefaultIcon"; ValueData: "{app}\{#MyDecryptAppName},0"; ValueType: string;  ValueName: ""
 Root: HKCR; Subkey: "{#MyDecryptAppName}\shell\open\command"; ValueData: """{app}\{#MyDecryptAppName}"" ""%1""";  ValueType: string;  ValueName: ""

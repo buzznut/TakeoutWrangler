@@ -81,7 +81,7 @@ public class EncryptDecryptTest
     {
         using (FileStream inputStream = new FileStream(filePath, FileMode.Open, FileAccess.Read))
         {
-            string tempPath = Path.Combine(Path.GetTempPath(), $"{name}.twlock");
+            string tempPath = Path.Combine(Path.GetTempPath(), $"{name}.twl");
             using (FileStream outputStream = new FileStream(tempPath, FileMode.Create, FileAccess.Write))
             {
                 string password = "testPassword";
