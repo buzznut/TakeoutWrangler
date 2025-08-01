@@ -1,3 +1,12 @@
+1.0.305.826 - 2025/08/01 08:46:58
+    1) Minor bug fixes, performance improvements, or setup changes.
+
+1.0.296.1013 - 2025/07/23 11:54:37
+    1) Minor bug fixes, performance improvements, or setup changes.
+
+1.0.296.829 - 2025/07/23 08:49:55
+    1) Sign TakeoutWrangerViewer. Added copyright info to files that did not have had it.
+
 1.0.295.981 - 2025/07/22 11:22:03
     1) Simplified unlock password entry. Improved email filenames to use subject instead of address.
     2) Changed name from TakeoutWranglerUnlock to TakeoutWranglerViewer.

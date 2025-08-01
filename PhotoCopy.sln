@@ -7,10 +7,13 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TakeoutWranglerCmdline", "T
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{403BF1C6-0D7E-40D8-A029-2FBDF12B1A4B}"
 	ProjectSection(SolutionItems) = preProject
+		.editorconfig = .editorconfig
+		.gitignore = .gitignore
 		Documentation\Copyright.txt = Documentation\Copyright.txt
 		GlobalAssemblyInfo.tt = GlobalAssemblyInfo.tt
+		LICENSE = LICENSE
 		Documentation\photos.ico = Documentation\photos.ico
-		Documentation\selfsigncert.pfx = Documentation\selfsigncert.pfx
+		README.md = README.md
 	EndProjectSection
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PhotoCopyLibrary", "PhotoCopyLibrary\PhotoCopyLibrary.csproj", "{BCD20D41-9F27-49B5-A933-41D1F76857C4}"

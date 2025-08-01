@@ -2,3 +2,4 @@ PhotoCopyLibrary
 ExifDataLibrary
 TakeoutWranglerUI
 TakeoutWranglerCmdline
+TakeoutWranglerViewer

@@ -48,3 +48,4 @@
 -git(669f536c86ea1b812201e873e579cca734530328)=Changed the name of the decrypt display in the installer.
 -all=Simplified unlock password entry. Improved email filenames to use subject instead of address.
 -all=Changed name from TakeoutWranglerUnlock to TakeoutWranglerViewer.
+-all=Sign TakeoutWrangerViewer. Added copyright info to files that did not have had it.
