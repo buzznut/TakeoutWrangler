@@ -641,6 +641,9 @@ public partial class MainForm : Form
         }
     }
 
+    // Installers/TakeoutWrangler/Output
+    // https://github.com/buzznut/TakeoutWrangler/tree/1aa58318a8a9d95453235078f44100b77272542b/Installers/TakeoutWrangler/Output
+
     private void UpdateCheckEvent(UpdateInfoEventArgs args)
     {
         switch (args.Error)

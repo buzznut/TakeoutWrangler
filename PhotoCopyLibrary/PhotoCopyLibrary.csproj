@@ -23,6 +23,12 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="AppHelpers.cs.bak" />
+    <None Remove="Configs.cs.bak" />
+    <None Remove="Enums.cs.bak" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Compile Include="..\GlobalAssemblyInfo.cs" Link="GlobalAssemblyInfo.cs" />
   </ItemGroup>
 

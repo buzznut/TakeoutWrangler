@@ -1,3 +1,6 @@
+1.0.306.909 - 2025/08/02 10:09:25
+    1) Changed the update url to the permalink version. Added version text to UI.
+
 1.0.305.826 - 2025/08/01 08:46:58
     1) Minor bug fixes, performance improvements, or setup changes.
 

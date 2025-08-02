@@ -9,7 +9,7 @@ namespace TakeoutWranglerUI;
 
 public class TWContstants
 {
-    public const string UpdateUrl = "https://raw.githubusercontent.com/buzznut/TakeoutWrangler/refs/heads/master/Installers/TakeoutWrangler/Output/TakeoutWranglerUIupdate.xml";
+    public const string UpdateUrl = "https://github.com/buzznut/TakeoutWrangler/tree/1aa58318a8a9d95453235078f44100b77272542b/Installers/TakeoutWrangler/Output/TakeoutWranglerUIupdate.xml";
     public const string CanceledOperation = "Operation was canceled";
     internal const string SourceDescriptionCopy = "Folder that contains the archive zip file(s) 'takeout-*.zip'";
     internal const string SourceDescriptionReorder = "Folder that local media files (no changes)";

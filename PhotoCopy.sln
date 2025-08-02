@@ -72,6 +72,17 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TakeoutWranglerViewer", "DecryptDisplay\TakeoutWranglerViewer.csproj", "{DA039C27-E153-4415-B53A-0C7E7DB05141}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CommonLibrary", "CommonLibrary\CommonLibrary.csproj", "{CCE3ADAA-6115-4D59-B6C3-21CA02E3B9D8}"
+	ProjectSection(ProjectDependencies) = postProject
+		{C4CA04E2-F5FC-4EB7-811D-A3D7C9599424} = {C4CA04E2-F5FC-4EB7-811D-A3D7C9599424}
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Output", "Output", "{02EA681E-C7D8-13C7-8484-4AC65E1B71E8}"
+	ProjectSection(SolutionItems) = preProject
+		Installers\TakeoutWrangler\Output\TakeoutWranglerUIchangelog.txt = Installers\TakeoutWrangler\Output\TakeoutWranglerUIchangelog.txt
+		Installers\TakeoutWrangler\Output\TakeoutWranglerUISetup.exe = Installers\TakeoutWrangler\Output\TakeoutWranglerUISetup.exe
+		Installers\TakeoutWrangler\Output\TakeoutWranglerUIupdate.xml = Installers\TakeoutWrangler\Output\TakeoutWranglerUIupdate.xml
+		Installers\TakeoutWrangler\Output\TrustStewartANutter.crt = Installers\TakeoutWrangler\Output\TrustStewartANutter.crt
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -123,6 +134,7 @@ Global
 		{C4CA04E2-F5FC-4EB7-811D-A3D7C9599424} = {9F60F645-B6D1-437B-9A4A-B03871E672B1}
 		{ABD873B0-B368-4288-BBD8-07AAC13658A0} = {9F60F645-B6D1-437B-9A4A-B03871E672B1}
 		{00D86DAF-C892-4D06-8311-7D6B96A512AD} = {ECB156EB-21C1-478B-9419-4F3EB046809E}
+		{02EA681E-C7D8-13C7-8484-4AC65E1B71E8} = {20CC6639-1C21-44BF-9381-8FAA4087053C}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {A14EDD0F-A169-47D5-9232-4646899FFB2D}

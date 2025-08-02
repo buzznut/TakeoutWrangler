@@ -38,6 +38,13 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Remove="SettingsForm.cs.bak" />
+    <None Remove="SettingsForm.Designer.cs.bak" />
+    <None Remove="TakeoutWranglerUI.csproj.bak" />
+    <None Remove="TWContstants.cs.bak" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Compile Include="C:\Users\sanut\OneDrive\GitCode\PhotoCopy\GlobalAssemblyInfo.cs" Link="GlobalAssemblyInfo.cs" />
   </ItemGroup>
 

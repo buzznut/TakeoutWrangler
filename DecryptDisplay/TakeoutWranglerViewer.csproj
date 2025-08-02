@@ -25,6 +25,14 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="DisplayForm.Designer.cs.bak" />
+    <None Remove="GetPassword.cs.bak" />
+    <None Remove="GetPassword.Designer.cs.bak" />
+    <None Remove="Program.cs.bak" />
+    <None Remove="TakeoutWranglerViewer.csproj.bak" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Compile Include="..\GlobalAssemblyInfo.cs" Link="GlobalAssemblyInfo.cs" />
   </ItemGroup>
 

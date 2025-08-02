@@ -22,6 +22,7 @@ using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO.Compression;
+using System.Reflection;
 using System.Security.AccessControl;
 using System.Security.Principal;
 using System.Text;
@@ -44,7 +45,7 @@ public class PhotoCopier
 {
     private CancellationTokenSource cancel;
     private const string retryText = "(Retry) ";
-    private  int canceled;
+    private int canceled;
     private Settings settings;
     private string password = null;
     private static bool isAdmin;
@@ -230,7 +231,10 @@ public class PhotoCopier
 
             // keep the parameters
 
-            outputHandler("Current configuration:");
+            outputHandler($"Settings for {appName}:");
+            outputHandler($"  Version: {GetVersion()}");
+            outputHandler();
+            outputHandler($"Current configuration:");
             outputHandler($" Running as Admin: {isAdmin}", isAdmin ? MessageCode.Success : MessageCode.Warning);
             outputHandler($" Action: {this.settings.Behavior}");
             outputHandler($" Source: {this.settings.Source}");
@@ -1175,7 +1179,7 @@ public class PhotoCopier
         }
     }
 
-    private  DateTime ParseDate(string creationDate)
+    private DateTime ParseDate(string creationDate)
     {
         DateTime date = DateTime.MinValue;
 
@@ -1857,7 +1861,7 @@ public class PhotoCopier
                 .Replace("$M", MonthName(date.Month));
         }
 
-        string newFilePath = string.IsNullOrEmpty(newTargetDirName) ? 
+        string newFilePath = string.IsNullOrEmpty(newTargetDirName) ?
             Path.GetFullPath(Path.Combine(settings.Destination)) :
             Path.GetFullPath(Path.Combine(settings.Destination, newTargetDirName));
 
@@ -1877,7 +1881,7 @@ public class PhotoCopier
         return newFilePath;
     }
 
-    private  string MonthName(int monthNumber)
+    private string MonthName(int monthNumber)
     {
         CultureInfo culture = CultureInfo.CurrentCulture;
         DateTimeFormatInfo dtfi = culture.DateTimeFormat;
@@ -1920,7 +1924,7 @@ public class PhotoCopier
         }
     }
 
-    private  string[] SplitByLength(string chunk, params int[] lengths)
+    private string[] SplitByLength(string chunk, params int[] lengths)
     {
         if (string.IsNullOrEmpty(chunk)) return null;
         if (lengths == null || lengths.Length == 0) return new[] { chunk };
@@ -1961,7 +1965,7 @@ public class PhotoCopier
         return result.ToArray();
     }
 
-    private  string[] FindNumberStrings(string fileName)
+    private string[] FindNumberStrings(string fileName)
     {
         List<string> strings = new List<string>();
 
@@ -2319,7 +2323,7 @@ public class PhotoCopier
         return new MemoryStream(Convert.ToInt32(length));
     }
 
-    public  bool ValidateSource(string dir, string filter, PhotoCopierActions behavior, ResultCounts counts, out string reason)
+    public bool ValidateSource(string dir, string filter, PhotoCopierActions behavior, ResultCounts counts, out string reason)
     {
         reason = string.Empty;
 
@@ -2493,7 +2497,7 @@ public class PhotoCopier
         return true;
     }
 
-    private  string[] GetJunkExtensions(string text)
+    private string[] GetJunkExtensions(string text)
     {
         if (string.IsNullOrEmpty(text)) return Array.Empty<string>();
         string[] parts = text.Split(',');
@@ -2857,7 +2861,7 @@ public class PhotoCopier
             {
                 c = '\'';
             }
-            
+
             if (!char.IsLetterOrDigit(c) && c != '\'')
             {
                 makeUpper = true;
@@ -3082,123 +3086,10 @@ public class PhotoCopier
 
         return newSettings;
     }
-}
 
-public class ResultCounts
-{
-    private object locker = new object();
-    public enum CountKeys
+    public Version GetVersion()
     {
-        Total,
-        Error,
-        Skip,
-        Duplicate,
-        Change,
-        Progress
-    }
-
-    private readonly ConcurrentDictionary<CountKeys, int?> Values = new ConcurrentDictionary<CountKeys, int?>();
-
-    public readonly string Text;
-    public readonly ResultCounts Parent;
-    public readonly List<ResultCounts> Children = new List<ResultCounts>();
-
-    public ResultCounts(ResultCounts parent, string text)
-    {
-        lock (locker)
-        {
-            Children.Clear();
-            foreach (CountKeys key in Enum.GetValues<CountKeys>())
-            {
-                Values[key] = null;
-            }
-
-            parent?.Children.Add(this);
-            Parent = parent;
-            Text = text;
-        }
-    }
-
-    public void Increment(CountKeys key)
-    {
-        lock (locker)
-        {
-            Values[key] = Values[key].GetValueOrDefault() + 1;
-        }
-    }
-
-    public void Set(CountKeys key, int value)
-    {
-        lock (locker)
-        {
-            Values[key] = value;
-        }
-    }
-
-    public void Add(CountKeys key, int value)
-    {
-        lock (locker)
-        {
-            Values[key] += value;
-        }
-    }
-
-    public int? Get(CountKeys key)
-    {
-        lock (locker)
-        {
-            return Values[key];
-        }
+        return Assembly.GetExecutingAssembly().GetName().Version ?? new Version(1, 0, 0, 0);
     }
 }
 
-public enum DataType
-{
-    Unknown,
-    AccessLogActivity,
-    Account,
-    Alerts,
-    ArchiveBrowser,
-    Assignments,
-    Blogger,
-    BusinessProfile,
-    Calendar,
-    Chat,
-    Chrome,
-    Contacts,
-    DeviceConfigurationService,
-    Discover,
-    Drive,
-    Feedback,
-    Finance,
-    Fit,
-    FitBit,
-    Gemini,
-    GooglePay,
-    Groups,
-    HelpCommunities,
-    HomeApp,
-    Keep,
-    Locked,
-    Mail,
-    Maps,
-    MapsYourPlaces,
-    Meet,
-    MyActivity,
-    News,
-    Photos,
-    PlayBooks,
-    PlayMoviesTV,
-    PlayStore,
-    Profile,
-    Recorder,
-    Saved,
-    SearchNotifications,
-    Shopping,
-    Store,
-    Tasks,
-    TimeLine,
-    Voice,
-    WorkspaceMarketplace,
-    YouTube,
-}
