@@ -25,6 +25,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="DisplayForm.cs.bak" />
     <None Remove="DisplayForm.Designer.cs.bak" />
     <None Remove="GetPassword.cs.bak" />
     <None Remove="GetPassword.Designer.cs.bak" />

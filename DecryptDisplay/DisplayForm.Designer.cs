@@ -55,6 +55,9 @@ namespace DecryptDisplay
             buttonPrevious = new Button();
             timerPasswordCheck = new System.Windows.Forms.Timer(components);
             saveFileDialog = new SaveFileDialog();
+            buttonZoomIn = new Button();
+            buttonZoomOut = new Button();
+            buttonReset = new Button();
             menuStrip.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)pictureBoxImage).BeginInit();
             ((System.ComponentModel.ISupportInitialize)videoView).BeginInit();
@@ -159,7 +162,6 @@ namespace DecryptDisplay
             pictureBoxImage.Location = new Point(187, 43);
             pictureBoxImage.Name = "pictureBoxImage";
             pictureBoxImage.Size = new Size(298, 83);
-            pictureBoxImage.SizeMode = PictureBoxSizeMode.Zoom;
             pictureBoxImage.TabIndex = 0;
             pictureBoxImage.TabStop = false;
             // 
@@ -200,11 +202,47 @@ namespace DecryptDisplay
             timerPasswordCheck.Interval = 1000;
             timerPasswordCheck.Tick += timerPasswordCheck_Tick;
             // 
+            // buttonZoomIn
+            // 
+            buttonZoomIn.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            buttonZoomIn.Location = new Point(771, 18);
+            buttonZoomIn.Name = "buttonZoomIn";
+            buttonZoomIn.Size = new Size(26, 23);
+            buttonZoomIn.TabIndex = 5;
+            buttonZoomIn.Text = "+";
+            buttonZoomIn.UseVisualStyleBackColor = true;
+            buttonZoomIn.Click += buttonZoomIn_Click;
+            // 
+            // buttonZoomOut
+            // 
+            buttonZoomOut.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            buttonZoomOut.Location = new Point(771, 72);
+            buttonZoomOut.Name = "buttonZoomOut";
+            buttonZoomOut.Size = new Size(26, 23);
+            buttonZoomOut.TabIndex = 6;
+            buttonZoomOut.Text = "-";
+            buttonZoomOut.UseVisualStyleBackColor = true;
+            buttonZoomOut.Click += buttonZoomOut_Click;
+            // 
+            // buttonReset
+            // 
+            buttonReset.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            buttonReset.Location = new Point(771, 45);
+            buttonReset.Name = "buttonReset";
+            buttonReset.Size = new Size(26, 23);
+            buttonReset.TabIndex = 7;
+            buttonReset.Text = "^";
+            buttonReset.UseVisualStyleBackColor = true;
+            buttonReset.Click += buttonReset_Click;
+            // 
             // DisplayForm
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(800, 450);
+            Controls.Add(buttonReset);
+            Controls.Add(buttonZoomOut);
+            Controls.Add(buttonZoomIn);
             Controls.Add(buttonPrevious);
             Controls.Add(buttonNext);
             Controls.Add(videoView);
@@ -218,6 +256,7 @@ namespace DecryptDisplay
             Text = "Takeout Wrangler Unlock";
             FormClosing += DisplayForm_FormClosing;
             Load += DisplayForm_Load;
+            ResizeEnd += DisplayForm_ResizeEnd;
             menuStrip.ResumeLayout(false);
             menuStrip.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)pictureBoxImage).EndInit();
@@ -246,5 +285,8 @@ namespace DecryptDisplay
         private SaveFileDialog saveFileDialog;
         private ToolStripMenuItem toolStripMenuItemPassword;
         private ToolStripSeparator toolStripSeparator2;
+        private Button buttonZoomIn;
+        private Button buttonZoomOut;
+        private Button buttonReset;
     }
 }

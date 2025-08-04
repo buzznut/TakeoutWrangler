@@ -10,7 +10,7 @@ using LibVLCSharp.Shared;
 using LibVLCSharp.WinForms;
 using System.Diagnostics;
 using System.Reflection;
-using System.Windows.Forms;
+
 
 namespace DecryptDisplay;
 
@@ -26,6 +26,12 @@ public partial class DisplayForm : Form
     private List<string> allFiles;
     private readonly Stopwatch passwordVisible = new Stopwatch();
     private string password;
+    private double zoomFactor = 1.0;
+    private Image originalImage = null;
+    private int p_left;
+    private int p_top;
+    private int p_right;
+    private int p_bottom;
 
     private readonly HashSet<string> pictureFormats =
         new HashSet<string>(
@@ -72,6 +78,11 @@ public partial class DisplayForm : Form
 
         videoView.MediaPlayer = new MediaPlayer(libvlc);
 
+        p_left = 32;
+        p_top = 22;
+        p_right = 42;
+        p_bottom = 40;
+
         panelPicture.Controls.Add(videoView);
         panelPicture.Controls.Add(pictureBoxImage);
         panelPicture.Controls.Add(richTextInfo);
@@ -80,9 +91,34 @@ public partial class DisplayForm : Form
         panelPicture.BorderStyle = BorderStyle.None;
         richTextInfo.BorderStyle = BorderStyle.None;
 
+        // Enable MouseWheel event
+        MouseWheel += PictureBox_MouseWheel;
+
         SetControl(richTextInfo);
+        ResizePanel();
 
         ResumeLayout(true);
+    }
+
+    private void PictureBox_MouseWheel(object sender, MouseEventArgs e)
+    {
+        // Adjust zoom factor based on scroll direction
+        bool adjusted = false;
+        if (e.Delta > 0)
+        {
+            zoomFactor *= 1.1f; // Zoom in
+            adjusted = true;
+        }
+        else if (e.Delta < 0 && zoomFactor > 0.1f)
+        {
+            zoomFactor /= 1.1f; // Zoom out
+            adjusted = true;
+        }
+
+        if (adjusted)
+        {
+            SetZoom();
+        }
     }
 
     private void exitToolStripMenuItem_Click(object sender, EventArgs e)
@@ -132,8 +168,8 @@ public partial class DisplayForm : Form
 
         OpenFileDialog openFileDialog = new OpenFileDialog
         {
-            Title = "Select a file to decrypt",
-            Filter = "Encrypted Files (*.twl)|*.twl|All Files (*.*)|*.*",
+            Title = "Select a file to open",
+            Filter = "All Files (*.*)|*.*",
             Multiselect = true,
             InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments)
         };
@@ -162,26 +198,27 @@ public partial class DisplayForm : Form
             try
             {
                 bool wasShown = false;
-                tmpPath = Path.Combine(Path.GetTempPath(), Path.GetFileNameWithoutExtension(originalFileName) + ".tmp");
-                displayStream = new FileStream(tmpPath, FileMode.Create, FileAccess.ReadWrite, FileShare.None, 4096, FileOptions.DeleteOnClose);
 
                 originalExtension = string.Empty;
+                bool isEncrypted = originalFileName.EndsWith(".twl", StringComparison.OrdinalIgnoreCase);
 
                 using (FileStream stream = new FileStream(originalFileName, FileMode.Open, FileAccess.Read))
                 {
-                    FileEncryption.DecryptFile(stream, displayStream, password, out originalExtension, out DateTime originalDate);
+                    if (isEncrypted)
+                    {
+                        tmpPath = Path.Combine(Path.GetTempPath(), Path.GetFileNameWithoutExtension(originalFileName) + ".tmp");
+                        displayStream = new FileStream(tmpPath, FileMode.Create, FileAccess.ReadWrite, FileShare.None, 4096, FileOptions.DeleteOnClose | FileOptions.Encrypted);
+                        FileEncryption.DecryptFile(stream, displayStream, password, out originalExtension, out DateTime originalDate);
+                    }
+                    else
+                    {
+                        originalExtension = Path.GetExtension(originalFileName);
+                        displayStream = stream;
+                    }
+
                     if (pictureFormats.Contains(originalExtension))
                     {
-                        // If the decrypted file is an image, display it in the PictureBox
-                        SetControl(pictureBoxImage);
-                        passwordVisible.Restart();
-                        timerPasswordCheck.Start();
-
-                        displayStream.Seek(0, SeekOrigin.Begin);
-                        pictureBoxImage.Image = System.Drawing.Image.FromStream(displayStream);
-                        panelPicture.Invalidate();
-
-                        wasShown = true;
+                        wasShown = DisplayImage(displayStream);
                     }
                     else if (movieFormats.Contains(originalExtension))
                     {
@@ -195,13 +232,30 @@ public partial class DisplayForm : Form
                         videoView.MediaPlayer?.Play(media);
                         wasShown = true;
                     }
+                    else if (IsTextFile(displayStream))
+                    {
+                        SetControl(richTextInfo);
+                        string[] lines;
+
+                        displayStream.Seek(0, SeekOrigin.Begin);
+
+                        using (StreamReader reader = new StreamReader(displayStream, true))
+                        {
+                            lines = reader.ReadToEnd().Split(new[] { Environment.NewLine }, StringSplitOptions.TrimEntries);
+                            if (lines.Length > 0)
+                            {
+                                SetRichTextBoxLines(lines, false);
+                                wasShown = true;
+                            }
+                        }
+                    }
                 }
 
                 if (!wasShown)
                 {
-                    // If the decrypted file is neither an image nor a movie, show a warning
+                    // If the decrypted file is neither an image, text file, nor a movie, show a warning
                     SetControl(richTextInfo);
-                    SetRichTextBoxLines(["The file is not a supported image or video format."]);
+                    SetRichTextBoxLines(["The file is not a supported format."]);
                 }
             }
             catch
@@ -212,13 +266,65 @@ public partial class DisplayForm : Form
         }
     }
 
-    private void SetRichTextBoxLine(string line)
+    public static bool IsTextFile(Stream stream)
     {
-        string[] lines = line.Split(new[] { Environment.NewLine }, StringSplitOptions.None);
-        SetRichTextBoxLines(lines);
+        const int sampleSize = 1024; // Read the first 1024 bytes
+        byte[] buffer = new byte[sampleSize];
+
+        // set stream position to the beginning
+        stream.Seek(0, SeekOrigin.Begin);
+
+        int bytesRead = stream.Read(buffer, 0, sampleSize);
+
+        // Reset stream position after reading
+        stream.Seek(0, SeekOrigin.Begin);
+
+        // Check for non-text characters
+        for (int i = 0; i < bytesRead; i++)
+        {
+            if (buffer[i] == 0) // Null byte indicates binary
+                return false;
+
+            // Check for valid ASCII range (optional: extend for UTF-8)
+            if (buffer[i] < 32 && buffer[i] != 9 && buffer[i] != 10 && buffer[i] != 13)
+                return false;
+        }
+
+        return true;
     }
 
-    private void SetRichTextBoxLines(string[] lines)
+    private bool DisplayImage(Stream imageStream)
+    {
+        try
+        {
+            // If the file is an image, display it in the PictureBox
+            SetControl(pictureBoxImage);
+            passwordVisible.Restart();
+            timerPasswordCheck.Start();
+
+            displayStream.Seek(0, SeekOrigin.Begin);
+            originalImage = Image.FromStream(displayStream);
+
+            zoomFactor = Math.Min(1.0, Math.Min(pictureBoxImage.Width / (double)originalImage.Width, pictureBoxImage.Height / (double)originalImage.Height)); // Reset the zoom factor to 1.0
+            SetImage(pictureBoxImage);
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            SetControl(richTextInfo);
+            SetRichTextBoxLine($"Error displaying image: {ex.Message}");
+            return false;
+        }
+    }
+
+    private void SetRichTextBoxLine(string line, bool center = true)
+    {
+        string[] lines = line.Split(new[] { Environment.NewLine }, StringSplitOptions.None);
+        SetRichTextBoxLines(lines, center);
+    }
+
+    private void SetRichTextBoxLines(string[] lines, bool center = true)
     {
         richTextInfo.Clear();
         int visibleLineCount = richTextInfo.ClientSize.Height / richTextInfo.Font.Height;
@@ -241,7 +347,7 @@ public partial class DisplayForm : Form
         }
 
         richTextInfo.SelectAll();
-        richTextInfo.SelectionAlignment = HorizontalAlignment.Center;
+        richTextInfo.SelectionAlignment = center ? HorizontalAlignment.Center : HorizontalAlignment.Left;
         richTextInfo.ScrollToCaret();
 
         ResumeLayout(true);
@@ -298,6 +404,8 @@ public partial class DisplayForm : Form
         pictureBoxImage.Image?.Dispose(); // Dispose of any previous image to free resources
         pictureBoxImage.Image = null;
         pictureBoxImage.Dock = DockStyle.None;
+        originalImage?.Dispose(); // Dispose of the original image if it exists
+        originalImage = null;
 
         videoView.Visible = false;
         videoView.Dock = DockStyle.None;
@@ -318,12 +426,18 @@ public partial class DisplayForm : Form
             tbi.Clear();
             tbi.Dock = DockStyle.Fill;
             displayedControl = tbi;
+            buttonZoomIn.Visible = false;
+            buttonZoomOut.Visible = false;
         }
         else if (obj is PictureBox pbi && pbi.Name == "pictureBoxImage")
         {
             pbi.Visible = true;
-            pbi.Dock = DockStyle.Fill;
+            pbi.Dock = DockStyle.None;
+            pbi.Anchor = AnchorStyles.Top | AnchorStyles.Left;
+            pbi.SizeMode = PictureBoxSizeMode.AutoSize;
             displayedControl = pbi;
+            buttonZoomIn.Visible = true;
+            buttonZoomOut.Visible = true;
         }
         else if (obj is VideoView vvi && vvi.Name == "videoView")
         {
@@ -331,12 +445,15 @@ public partial class DisplayForm : Form
             vvi.Visible = true;
             vvi.Dock = DockStyle.Fill;
             displayedControl = vvi;
+            buttonZoomIn.Visible = false;
+            buttonZoomOut.Visible = false;
         }
         else
         {
             displayedControl = null;
         }
 
+        ResizeControl();
         ResumeLayout(false);
     }
 
@@ -457,15 +574,16 @@ public partial class DisplayForm : Form
         allFiles = selectedFiles.ToList();
         if (allFiles.Count == 0)
         {
-            SetRichTextBoxLine("No .twl files selected.");
+            SetRichTextBoxLine("No files selected.");
             return;
         }
 
         allFiles.Sort();
         currentFileIndex = 0;
         lastCurrentFileIndex = -1;
+        bool haveEncryptedFiles = allFiles.Any(x => x.EndsWith(".twl", StringComparison.OrdinalIgnoreCase));
 
-        if (string.IsNullOrEmpty(password))
+        if (haveEncryptedFiles && string.IsNullOrEmpty(password))
         {
             RequestPassword();
         }
@@ -500,5 +618,100 @@ public partial class DisplayForm : Form
     private void toolStripMenuItemPassword_Click(object sender, EventArgs e)
     {
         RequestPassword();
+    }
+
+    private void buttonZoomIn_Click(object sender, EventArgs e)
+    {
+        zoomFactor *= 1.2; // Increase zoom factor by 20%
+        if (displayedControl is PictureBox pictureBox && originalImage != null)
+        {
+            SetImage(pictureBox);
+        }
+        else if (displayedControl is VideoView videoView && videoView.MediaPlayer != null)
+        {
+            videoView.MediaPlayer.Scale = (float)zoomFactor;
+        }
+    }
+
+    private void buttonZoomOut_Click(object sender, EventArgs e)
+    {
+        zoomFactor /= 1.2; // Decrease zoom factor by 20%
+        if (displayedControl is PictureBox pictureBox && originalImage != null)
+        {
+            SetImage(pictureBox);
+        }
+        else if (displayedControl is VideoView videoView && videoView.MediaPlayer != null)
+        {
+            videoView.MediaPlayer.Scale = (float)zoomFactor;
+        }
+    }
+
+    private void SetImage(PictureBox pictureBox)
+    {
+        pictureBox.SuspendLayout();
+        Size newSize = new Size((int)(originalImage.Width * zoomFactor), (int)(originalImage.Height * zoomFactor));
+        pictureBox.Image?.Dispose(); // Dispose of any previous image to free resources
+        pictureBox.Image = new Bitmap(originalImage, newSize);
+        pictureBox.Invalidate();
+        ResizeControl();
+        pictureBox.ResumeLayout(true);
+    }
+
+    private void buttonReset_Click(object sender, EventArgs e)
+    {
+        if (displayedControl is PictureBox pictureBox && originalImage != null)
+        {
+            zoomFactor = Math.Min(1.0, Math.Min(pictureBoxImage.Width / (double)originalImage.Width, pictureBoxImage.Height / (double)originalImage.Height)); // Reset the zoom factor to 1.0
+            SetImage(pictureBox);
+        }
+        else if (displayedControl is VideoView videoView && videoView.MediaPlayer != null)
+        {
+            zoomFactor = 1.0; // Reset zoom factor to 1.0
+            videoView.MediaPlayer.Scale = 1.0f; // Reset video scale to 1.0
+        }
+    }
+
+    private void SetZoom()
+    {
+        if (displayedControl is PictureBox pictureBox && originalImage != null)
+        {
+            SetImage(pictureBox);
+        }
+        else if (displayedControl is VideoView videoView && videoView.MediaPlayer != null)
+        {
+            videoView.MediaPlayer.Scale = (float)zoomFactor; // Reset video scale to 1.0
+        }
+    }
+
+    private void DisplayForm_ResizeEnd(object sender, EventArgs e)
+    {
+        //ResizePanel();
+    }
+
+    private void ResizePanel()
+    {
+        panelPicture.Location = new Point(p_left, p_top);
+        panelPicture.Size = new Size(
+            Math.Max(Width - p_left - p_right, 1),
+            Math.Max(Height - p_top - p_bottom, 1));
+
+        panelPicture.ResumeLayout(true);
+
+        ResizeControl();
+    }
+
+    private void ResizeControl()
+    {
+        if (displayedControl == null) return;
+
+        displayedControl.SuspendLayout();
+
+        if (displayedControl == null) return;
+        displayedControl.Location = new Point(0, 0);
+        displayedControl.Size = new Size(
+            Math.Max(panelPicture.Width - 1, 1),
+            Math.Max(panelPicture.Height - 1, 1));
+
+        displayedControl.ResumeLayout(true);
     }
 }

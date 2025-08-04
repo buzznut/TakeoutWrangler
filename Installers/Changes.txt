@@ -50,3 +50,4 @@
 -all=Changed name from TakeoutWranglerUnlock to TakeoutWranglerViewer.
 -all=Sign TakeoutWrangerViewer. Added copyright info to files that did not have had it.
 -all=Changed the update url to the permalink version. Added version text to UI.
+-all=Changed relevant help text. Added zoom to TakeoutWranglerViewer.

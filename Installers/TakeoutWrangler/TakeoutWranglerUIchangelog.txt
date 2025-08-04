@@ -1,3 +1,9 @@
+1.0.308.787 - 2025/08/04 08:07:53
+    1) Changed relevant help text. Added zoom to TakeoutWranglerViewer.
+
+1.0.308.784 - 2025/08/04 08:04:36
+    1) Minor bug fixes, performance improvements, or setup changes.
+
 1.0.306.929 - 2025/08/02 10:29:26
     1) Minor bug fixes, performance improvements, or setup changes.
 
