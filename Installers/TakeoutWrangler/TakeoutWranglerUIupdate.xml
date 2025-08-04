@@ -1,7 +1,7 @@
 ﻿<?xml version="1.0" encoding="UTF-8"?>
 <item>
-  <version>1.0.308.892</version>
-  <url>https://github.com/buzznut/TakeoutWrangler/tree/1aa58318a8a9d95453235078f44100b77272542b/Installers/TakeoutWrangler/Output/TakeoutWranglerUISetup.exe</url>
-  <changelog>https://github.com/buzznut/TakeoutWrangler/tree/1aa58318a8a9d95453235078f44100b77272542b/Installers/TakeoutWrangler/Output/TakeoutWranglerUIchangelog.txt</changelog>
+  <version>1.0.308.1364</version>
+  <url>https://raw.githubusercontent.com/buzznut/TakeoutWrangler/master/Installers/TakeoutWrangler/Output/TakeoutWranglerUISetup.exe</url>
+  <changelog>https://raw.githubusercontent.com/buzznut/TakeoutWrangler/master/Installers/TakeoutWrangler/Output/TakeoutWranglerUIchangelog.txt</changelog>
   <mandatory>false</mandatory>
 </item>

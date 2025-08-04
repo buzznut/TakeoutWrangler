@@ -94,7 +94,12 @@ public partial class MainForm : Form
         StartPageResolve(0);
 
         AutoUpdater.CheckForUpdateEvent += UpdateCheckEvent;
+        AutoUpdater.ParseUpdateInfoEvent += ParseUpdate;
         this.args = args;
+    }
+
+    private void ParseUpdate(ParseUpdateInfoEventArgs args)
+    {
     }
 
     private void RunnerCompleted(object sender, RunWorkerCompletedEventArgs e)
@@ -642,7 +647,7 @@ public partial class MainForm : Form
     }
 
     // Installers/TakeoutWrangler/Output
-    // https://github.com/buzznut/TakeoutWrangler/tree/1aa58318a8a9d95453235078f44100b77272542b/Installers/TakeoutWrangler/Output
+    // https://raw.githubusercontent.com/buzznut/TakeoutWrangler/master/Installers/TakeoutWrangler/Output/TakeoutWranglerUIupdate.xml
 
     private void UpdateCheckEvent(UpdateInfoEventArgs args)
     {

@@ -1,3 +1,6 @@
+1.0.308.1364 - 2025/08/04 05:44:29
+    1) Use the old URL instead of the permalink. Broke the auto-update. Fixed it.
+
 1.0.308.892 - 2025/08/04 09:53:03
     1) Minor bug fixes, performance improvements, or setup changes.
 

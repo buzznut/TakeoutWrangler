@@ -52,3 +52,4 @@
 -all=Changed the update url to the permalink version. Added version text to UI.
 -all=Changed relevant help text. Added zoom to TakeoutWranglerViewer.
 -all=Use the permalink URL for the update xml file.
+-all=Use the old URL instead of the permalink. Broke the auto-update. Fixed it.
