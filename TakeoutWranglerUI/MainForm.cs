@@ -48,7 +48,6 @@ public partial class MainForm : Form
     private readonly string appDir = AppHelpers.GetApplicationDir();
     private bool pagesLoaded;
     private readonly List<ListBoxItem> items = new List<ListBoxItem>();
-    private readonly string updateUrl = TWContstants.UpdateUrl;
     private static int totalItems;
     private static int progress;
     private Settings settings;
@@ -94,12 +93,7 @@ public partial class MainForm : Form
         StartPageResolve(0);
 
         AutoUpdater.CheckForUpdateEvent += UpdateCheckEvent;
-        AutoUpdater.ParseUpdateInfoEvent += ParseUpdate;
         this.args = args;
-    }
-
-    private void ParseUpdate(ParseUpdateInfoEventArgs args)
-    {
     }
 
     private void RunnerCompleted(object sender, RunWorkerCompletedEventArgs e)
@@ -851,7 +845,7 @@ public partial class MainForm : Form
 
     private void checkForUpdatesToolStripMenuItem_Click(object sender, EventArgs e)
     {
-        if (!string.IsNullOrEmpty(updateUrl)) AutoUpdater.Start(updateUrl);
+        AutoUpdater.Start(TWContstants.UpdateUrl);
     }
 }
 
