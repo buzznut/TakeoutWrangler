@@ -35,7 +35,6 @@ public partial class MainForm : Form
     private static uint viewStatus;
     private static uint viewType;
     private static IntPtr myHandle;
-    private bool showNoUpdateAvailable;
     private readonly string[] helpFiles = { "Help.pdf", "About.pdf", "HowToGetYourPhotosFromGoogleTakeout.pdf" };
     private readonly Dictionary<string, Stream[]> helpStreams = new Dictionary<string, Stream[]>(StringComparer.OrdinalIgnoreCase)
     {
@@ -653,10 +652,10 @@ public partial class MainForm : Form
                     // Uncomment the following line if you want to show standard update dialog instead.
                     AutoUpdater.ShowUpdateForm(args);
                 }
-                else if (showNoUpdateAvailable)
+                else
                 {
                     MessageBox.Show(
-                        "No update available please try again later.", "Updates",
+                        "You are running the latest version.", "Updates",
                         MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
                 break;
@@ -676,8 +675,6 @@ public partial class MainForm : Form
                     MessageBoxIcon.Error);
                 break;
         }
-
-        showNoUpdateAvailable = true;
     }
 
     private void ToolStripSaveConsole_Click(object sender, EventArgs e)
